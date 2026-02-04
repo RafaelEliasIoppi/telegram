@@ -22,16 +22,14 @@ public class TelegramService {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
-    public void sendMessage(String text) {
+    public void sendMessage(String text, String destinatario) {
         String url = "https://api.telegram.org/bot" + token + "/sendMessage";
 
-        // Corpo da requisição
         Map<String, String> params = Map.of(
                 "chat_id", chatId,
                 "text", text
         );
 
-        // Headers (garantindo JSON)
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 
