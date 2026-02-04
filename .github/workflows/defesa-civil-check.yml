@@ -22,10 +22,11 @@ jobs:
 
       - name: Build com Maven
         run: mvn clean install -DskipTests
+        working-directory: ./teste   # 👈 aponta para a pasta onde está o pom.xml
 
       - name: Rodar aplicação (checagem Defesa Civil)
-        run: |
-          java -jar target/*.jar
+        run: java -jar target/*.jar
+        working-directory: ./teste   # 👈 também aqui
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
