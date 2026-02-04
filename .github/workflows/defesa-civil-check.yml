@@ -1,0 +1,31 @@
+name: Defesa Civil RS Monitor
+
+on:
+  schedule:
+    # roda a cada minuto
+    - cron: '*/1 * * * *'
+  workflow_dispatch: # permite rodar manualmente também
+
+jobs:
+  check-alerts:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Build com Maven
+        run: mvn clean install -DskipTests
+
+      - name: Rodar aplicação (checagem Defesa Civil)
+        run: |
+          java -jar target/*.jar
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
