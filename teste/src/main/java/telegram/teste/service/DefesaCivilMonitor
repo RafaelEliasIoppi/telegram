@@ -4,6 +4,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 
 @Component
 public class DefesaCivilMonitor {
@@ -27,7 +30,6 @@ public class DefesaCivilMonitor {
         try {
             String conteudo = restTemplate.getForObject(DEFESA_CIVIL_URL, String.class);
 
-            // Aqui você pode usar regex ou parser HTML para extrair o aviso mais recente
             String avisoAtual = extrairAviso(conteudo);
 
             if (!avisoAtual.isEmpty() && !avisoAtual.equals(ultimoAviso)) {
@@ -41,16 +43,23 @@ public class DefesaCivilMonitor {
     }
 
     /**
-     * Método simples para extrair aviso do HTML retornado.
-     * Em produção, use Jsoup ou outro parser para maior precisão.
+     * Extrai o aviso mais recente usando Jsoup.
      */
     private String extrairAviso(String html) {
-        if (html == null) return "";
-        // Exemplo simplificado: procurar palavra-chave
-        int idx = html.indexOf("Aviso");
-        if (idx > 0) {
-            return html.substring(idx, Math.min(idx + 200, html.length()));
+        if (html == null || html.isEmpty()) return "";
+
+        try {
+            Document doc = Jsoup.parse(html);
+
+            // Exemplo: pegar o primeiro título ou parágrafo da seção de avisos
+            Element aviso = doc.selectFirst(".avisos, .aviso, .news-item, p, h2, h3"); 
+            if (aviso != null) {
+                return aviso.text();
+            }
+        } catch (Exception e) {
+            System.err.println("Erro ao parsear HTML: " + e.getMessage());
         }
+
         return "";
     }
 }
