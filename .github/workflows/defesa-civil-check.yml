@@ -2,8 +2,8 @@ name: Defesa Civil RS Monitor
 
 on:
   schedule:
-    # roda a cada minuto
-    - cron: '*/1 * * * *'
+    # roda a cada 15 minutos
+    - cron: '*/15 * * * *'
   workflow_dispatch: # permite rodar manualmente também
 
 jobs:
