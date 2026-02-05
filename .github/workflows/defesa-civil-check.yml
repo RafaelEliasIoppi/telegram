@@ -2,9 +2,8 @@ name: Defesa Civil RS Monitor
 
 on:
   schedule:
-    # roda a cada minuto
     - cron: '*/1 * * * *'
-  workflow_dispatch: # permite rodar manualmente também
+  workflow_dispatch:
 
 jobs:
   check-alerts:
@@ -12,7 +11,6 @@ jobs:
     steps:
       - name: Chamar endpoint buscar-defesa-civil
         run: |
-          curl -X POST https://humble-happiness-69g5gppq775vh55vv.github.dev//buscar-defesa-civil \
-            -d "destinatario=${{ secrets.TELEGRAM_CHAT_ID }}" \
-            -H "Content-Type: application/x-www-form-urlencoded" \
-            -H "Authorization: Bearer ${{ secrets.API_TOKEN }}"
+          curl -X POST https://humble-happiness-69g5gppq775vh55vv.github.dev/buscar-defesa-civil \
+            -H "Authorization: Bearer ${{ secrets.API_TOKEN }}" \
+            -d "destinatario=${{ secrets.TELEGRAM_CHAT_ID }}"
