@@ -14,11 +14,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout do repositório (versão mais recente)
+      # 1. Checkout do repositório
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Configuração do JDK (versão mais recente)
+      # 2. Configuração do JDK
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -34,13 +34,13 @@ jobs:
       - name: Package application
         run: mvn -B -f teste/pom.xml package
 
-      # 5. Upload do artefato gerado (versão mais recente)
+      # 5. Upload do artefato gerado
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v4
         with:
           name: spring-boot-app
           path: teste/target/*.jar
 
-      # 6. Executar método verificarEmailsSNT()
-      - name: Run Gmail fetch
-        run: mvn -f teste/pom.xml exec:java -Dexec.mainClass=telegram.teste.TesteApplication -Dexec.args=buscar-gmail
+      # 6. Executar checagem de e-mails usando último assunto salvo
+      - name: Run Gmail fetch (último assunto)
+        run: mvn -f teste/pom.xml exec:java -Dexec.mainClass=telegram.teste.TesteApplication
