@@ -1,5 +1,9 @@
 package telegram.teste.service;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 import org.slf4j.Logger;
@@ -37,38 +41,40 @@ public class GmailMonitor {
     private String ultimoEmailId = "";
 
     /**
-     * Busca e-mails do SNT (remetente ou assunto).
+     * Busca e-mails do SNT (remetente ou assunto) e retorna dados já extraídos.
      */
-    public Message[] buscarEmailsSNT() throws Exception {
+    public List<Map<String, String>> buscarEmailsSNT() throws Exception {
         Properties props = new Properties();
         props.put("mail.store.protocol", "imaps");
 
         Session session = Session.getInstance(props);
-        Store store = null;
-        Folder inbox = null;
+        List<Map<String, String>> resultado = new ArrayList<>();
 
-        try {
-            store = session.getStore("imaps");
+        try (Store store = session.getStore("imaps")) {
             store.connect("imap.gmail.com", username, appPassword);
 
-            inbox = store.getFolder("INBOX");
-            inbox.open(Folder.READ_ONLY);
+            try (Folder inbox = store.getFolder("INBOX")) {
+                inbox.open(Folder.READ_ONLY);
 
-            SearchTerm filtro = new OrTerm(
-                    new FromStringTerm("SNT"),
-                    new SubjectTerm("SNT")
-            );
+                SearchTerm filtro = new OrTerm(
+                        new FromStringTerm("SNT"),
+                        new SubjectTerm("SNT")
+                );
 
-            return inbox.search(filtro);
+                Message[] messages = inbox.search(filtro);
 
-        } finally {
-            if (inbox != null && inbox.isOpen()) {
-                inbox.close(false);
-            }
-            if (store != null && store.isConnected()) {
-                store.close();
+                for (Message msg : messages) {
+                    Map<String, String> dados = new HashMap<>();
+                    String[] ids = msg.getHeader("Message-ID");
+                    dados.put("id", (ids != null && ids.length > 0) ? ids[0] : msg.getSubject());
+                    dados.put("assunto", msg.getSubject());
+                    dados.put("remetente", msg.getFrom()[0].toString());
+                    dados.put("data", msg.getReceivedDate() != null ? msg.getReceivedDate().toString() : "");
+                    resultado.add(dados);
+                }
             }
         }
+        return resultado;
     }
 
     /**
@@ -76,17 +82,16 @@ public class GmailMonitor {
      */
     public void verificarEmailsSNT() {
         try {
-            Message[] messages = buscarEmailsSNT();
+            List<Map<String, String>> emails = buscarEmailsSNT();
 
-            if (messages.length > 0) {
-                Message ultimo = messages[messages.length - 1];
-                String[] ids = ultimo.getHeader("Message-ID");
-                String id = (ids != null && ids.length > 0) ? ids[0] : ultimo.getSubject();
+            if (!emails.isEmpty()) {
+                Map<String, String> ultimo = emails.get(emails.size() - 1);
+                String id = ultimo.get("id");
 
                 if (!id.equals(ultimoEmailId)) {
                     ultimoEmailId = id;
-                    String assunto = ultimo.getSubject();
-                    String remetente = ultimo.getFrom()[0].toString();
+                    String assunto = ultimo.get("assunto");
+                    String remetente = ultimo.get("remetente");
 
                     telegramService.sendMessage(
                             "📧 Novo e-mail do SNT:\nDe: " + remetente + "\nAssunto: " + assunto,
