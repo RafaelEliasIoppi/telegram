@@ -41,6 +41,20 @@ jobs:
           name: spring-boot-app
           path: teste/target/*.jar
 
-      # 6. Executar checagem de e-mails usando último assunto salvo
+      # 6. Restaurar último assunto salvo (cache do arquivo)
+      - name: Restore last subject file
+        uses: actions/cache@v4
+        with:
+          path: ultimo_assunto.txt
+          key: gmail-subject-file
+
+      # 7. Executar checagem de e-mails usando último assunto salvo
       - name: Run Gmail fetch (último assunto)
         run: mvn -f teste/pom.xml exec:java -Dexec.mainClass=telegram.teste.TesteApplication
+
+      # 8. Salvar último assunto atualizado (cache do arquivo)
+      - name: Save last subject file
+        uses: actions/cache@v4
+        with:
+          path: ultimo_assunto.txt
+          key: gmail-subject-file
