@@ -5,8 +5,8 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
-  workflow_dispatch: # execução manual
-  schedule:          # execução automática a cada 15 min
+  workflow_dispatch:
+  schedule:
     - cron: "*/15 * * * *"
 
 jobs:
@@ -48,11 +48,22 @@ jobs:
           path: ultimo_assunto.txt
           key: gmail-subject-file
 
-      # 7. Executar checagem de e-mails usando último assunto salvo
-      - name: Run Gmail fetch (último assunto)
-        run: mvn -f teste/pom.xml exec:java -Dexec.mainClass=telegram.teste.TesteApplication
+      # 7. Garantir que o arquivo exista (se não houver cache)
+      - name: Ensure last subject file exists
+        run: |
+          if [ ! -f ultimo_assunto.txt ]; then
+            echo "mercado pago" > ultimo_assunto.txt
+          fi
 
-      # 8. Salvar último assunto atualizado (cache do arquivo)
+      # 8. Executar aplicação Spring Boot (igual ao Codespaces)
+      - name: Run Gmail fetch (último assunto)
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GMAIL_TOKEN: ${{ secrets.GMAIL_TOKEN }}
+        run: mvn -f teste/pom.xml spring-boot:run
+
+      # 9. Salvar último assunto atualizado (cache do arquivo)
       - name: Save last subject file
         uses: actions/cache@v4
         with:
