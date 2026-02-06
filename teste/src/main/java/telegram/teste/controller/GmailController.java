@@ -1,11 +1,16 @@
 package telegram.teste.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
-import telegram.teste.service.GmailMonitor;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-import jakarta.mail.Message;
-import java.util.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import telegram.teste.service.GmailMonitor;
 
 @RestController
 @RequestMapping("/gmail")
@@ -23,19 +28,8 @@ public class GmailController {
         List<Map<String, String>> emails = new ArrayList<>();
 
         try {
-            // 🔹 Usa método buscarEmailsSNT() do GmailMonitor
-            Message[] messages = gmailMonitor.buscarEmailsSNT();
-
-            // 🔹 Itera sobre os e-mails encontrados
-            for (Message msg : messages) {
-                Map<String, String> emailData = new HashMap<>();
-                emailData.put("remetente", msg.getFrom()[0].toString());
-                emailData.put("assunto", msg.getSubject());
-                emailData.put("data", msg.getReceivedDate() != null
-                        ? msg.getReceivedDate().toString()
-                        : "sem data");
-                emails.add(emailData);
-            }
+            // 🔹 Usa método buscarEmailsSNT() do GmailMonitor (já retorna dados prontos)
+            emails = gmailMonitor.buscarEmailsSNT();
 
             // 🔹 Se não encontrou nada, retorna aviso
             if (emails.isEmpty()) {
