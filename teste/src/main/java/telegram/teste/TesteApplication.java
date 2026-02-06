@@ -4,8 +4,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ApplicationContext;
 
-import telegram.teste.service.DefesaCivilMonitor;
-import telegram.teste.service.TelegramService;
+import telegram.teste.service.GmailMonitor;
 
 @SpringBootApplication
 public class TesteApplication {
@@ -14,14 +13,11 @@ public class TesteApplication {
         ApplicationContext ctx = SpringApplication.run(TesteApplication.class, args);
         System.out.println("🚀 Aplicação iniciada com sucesso!");
 
-        DefesaCivilMonitor monitor = ctx.getBean(DefesaCivilMonitor.class);
-        TelegramService telegram = ctx.getBean(TelegramService.class);
+        // 🔹 Chama apenas o GmailMonitor
+        GmailMonitor gmailMonitor = ctx.getBean(GmailMonitor.class);
+        gmailMonitor.verificarEmailsSNT();
 
-        String alerta = monitor.verificarAgora();
-        if (!alerta.isEmpty()) {
-            telegram.sendMessage("⚠️ Alerta Defesa Civil RS:\n" + alerta, "SEU_CHAT_ID");
-        } else {
-            telegram.sendMessage("ℹ️ Nenhum alerta novo encontrado na Defesa Civil RS.", "SEU_CHAT_ID");
-        }
+        // 🔹 Encerra a aplicação após rodar
+        System.exit(0);
     }
 }

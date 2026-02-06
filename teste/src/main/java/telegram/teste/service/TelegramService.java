@@ -17,13 +17,22 @@ public class TelegramService {
     @Value("${telegram.bot.token}")
     private String token;
 
+    // chatId padrão (caso não seja passado outro)
     @Value("${telegram.chat.id}")
-    private String chatId;
+    private String defaultChatId;
 
     private final RestTemplate restTemplate = new RestTemplate();
 
+    /**
+     * Envia mensagem para um chat específico.
+     * Se destinatário for nulo ou vazio, usa o chatId padrão.
+     */
     public void sendMessage(String text, String destinatario) {
         String url = "https://api.telegram.org/bot" + token + "/sendMessage";
+
+        String chatId = (destinatario == null || destinatario.isBlank())
+                ? defaultChatId
+                : destinatario;
 
         Map<String, String> params = Map.of(
                 "chat_id", chatId,
