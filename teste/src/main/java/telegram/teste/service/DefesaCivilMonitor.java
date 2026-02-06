@@ -108,5 +108,8 @@ private String parseAviso(Document doc) {
 
     return "";
 }
+public void buscarAvisos() {
+    verificarAgora();
+}
 
 }
