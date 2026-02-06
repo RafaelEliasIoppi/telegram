@@ -107,17 +107,9 @@ private String parseAviso(Document doc) {
 
     return "";
 }
+
 public void buscarAvisos() {
     verificarAgora();
 }
 
-<<<<<<< HEAD
-public void buscarAvisos() {
-    verificarAgora();
 }
-
-
-}
-=======
-}
->>>>>>> c2744119adb8d6666c337a8f7038ddec6edc7674
