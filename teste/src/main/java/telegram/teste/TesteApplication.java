@@ -13,9 +13,9 @@ public class TesteApplication {
         ApplicationContext ctx = SpringApplication.run(TesteApplication.class, args);
         System.out.println("🚀 Aplicação iniciada com sucesso!");
 
-        // 🔹 Chama apenas o GmailMonitor
+        // 🔹 Chama o GmailMonitor usando o último assunto salvo
         GmailMonitor gmailMonitor = ctx.getBean(GmailMonitor.class);
-        gmailMonitor.verificarEmailsSNT();
+        gmailMonitor.verificarEmailsUltimoAssunto();
 
         // 🔹 Encerra a aplicação após rodar
         System.exit(0);
