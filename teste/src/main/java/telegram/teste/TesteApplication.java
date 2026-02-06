@@ -23,7 +23,8 @@ public class TesteApplication {
         } else {
             telegram.sendMessage("ℹ️ Nenhum alerta novo encontrado na Defesa Civil RS.", telegram.chat.id);
         }
+
+        // 🔹 Força o encerramento da aplicação após rodar
+        System.exit(0);
     }
-    // 🔹 Força o encerramento da aplicação após rodar
-    System.exit(0);
 }
