@@ -14,13 +14,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout do repositório
+      # 1. Checkout do repositório (versão mais recente)
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      # 2. Configuração do JDK
+      # 2. Configuração do JDK (versão mais recente)
       - name: Set up JDK 17
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
@@ -34,9 +34,9 @@ jobs:
       - name: Package application
         run: mvn -B -f teste/pom.xml package
 
-      # 5. Upload do artefato gerado
+      # 5. Upload do artefato gerado (versão mais recente)
       - name: Upload JAR artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: spring-boot-app
           path: teste/target/*.jar
