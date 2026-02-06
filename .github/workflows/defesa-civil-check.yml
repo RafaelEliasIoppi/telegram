@@ -43,4 +43,5 @@ jobs:
 
       # 6. Executar método buscarAvisos()
       - name: Run Defesa Civil fetch
-        run: mvn -f teste/pom.xml spring-boot:run -Dspring-boot.run.arguments=buscar-defesa-civil
+        run: mvn -f teste/pom.xml exec:java -Dexec.mainClass=telegram.teste.TesteApplication -Dexec.args=buscar-defesa-civil
+
