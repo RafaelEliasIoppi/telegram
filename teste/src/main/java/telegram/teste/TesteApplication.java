@@ -17,11 +17,14 @@ public class TesteApplication {
         DefesaCivilMonitor monitor = ctx.getBean(DefesaCivilMonitor.class);
         TelegramService telegram = ctx.getBean(TelegramService.class);
 
+        // 🔹 Pega o chatId configurado no application.properties
+        String chatId = ctx.getEnvironment().getProperty("telegram.chat.id");
+
         String alerta = monitor.verificarAgora();
         if (!alerta.isEmpty()) {
-            telegram.sendMessage("⚠️ Alerta Defesa Civil RS:\n" + alerta, telegram.chat.id);
+            telegram.sendMessage("⚠️ Alerta Defesa Civil RS:\n" + alerta, chatId);
         } else {
-            telegram.sendMessage("ℹ️ Nenhum alerta novo encontrado na Defesa Civil RS.", telegram.chat.id);
+            telegram.sendMessage("ℹ️ Nenhum alerta novo encontrado na Defesa Civil RS.", chatId);
         }
 
         // 🔹 Força o encerramento da aplicação após rodar
