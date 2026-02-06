@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Enviar Mensagem Telegram</title>
+    <title>Monitor de Gmail e Telegram</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -74,7 +74,9 @@
 </head>
 <body>
     <div class="container">
-        <h2>Enviar Mensagem para Telegram</h2>
+        <h2>Monitor de Gmail e Telegram</h2>
+
+        <!-- Enviar mensagem manual para Telegram -->
         <form action="/enviar" method="post">
             <label for="titulo">Título:</label>
             <input type="text" id="titulo" name="titulo" placeholder="Digite o título da mensagem" required>
@@ -83,23 +85,29 @@
             <textarea id="conteudo" name="conteudo" rows="5" placeholder="Digite o conteúdo da mensagem" required></textarea>
 
             <label for="destinatario">Destinatário (chat_id):</label>
-            <input type="text" id="destinatario" name="destinatario" placeholder="Ex: 123456789" required>
+            <input type="text" id="destinatario" name="destinatario" placeholder="Ex: 123456789">
 
             <button type="submit">📤 Enviar Mensagem</button>
         </form>
 
-        <!-- Botão para buscar e-mails do SNT -->
-        <form action="/buscar-gmail" method="post">
-            <button type="submit">📧 Buscar E-mails do SNT</button>
+        <!-- Buscar e-mails por assunto -->
+        <form action="/buscar-gmail-assunto" method="post">
+            <label for="assunto">Assunto do e-mail:</label>
+            <input type="text" id="assunto" name="assunto" placeholder="Digite o assunto para buscar" required>
+            <button type="submit">📧 Buscar E-mails por Assunto</button>
+        </form>
+
+        <!-- Buscar e-mails pelo último assunto salvo -->
+        <form action="/buscar-gmail-ultimo" method="post">
+            <button type="submit">📂 Buscar pelo Último Assunto Salvo</button>
         </form>
 
         <div class="info">
-            As mensagens serão enviadas diretamente para o Telegram via API.
+            As mensagens e resultados aparecerão abaixo.
         </div>
 
-        <!-- Aqui aparecerá o resultado -->
+        <!-- Resultado injetado pelo controller -->
         <div class="resultado">
-            <!-- O controller deve injetar a resposta aqui -->
             <p th:text="${mensagem}"></p>
         </div>
     </div>
