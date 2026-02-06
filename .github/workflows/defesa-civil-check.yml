@@ -1,4 +1,4 @@
-name: CI - Spring Boot Defesa Civil
+name: CI - Spring Boot Gmail Monitor
 
 on:
   push:
@@ -41,7 +41,6 @@ jobs:
           name: spring-boot-app
           path: teste/target/*.jar
 
-      # 6. Executar método buscarAvisos()
-      - name: Run Defesa Civil fetch
-        run: mvn -f teste/pom.xml exec:java -Dexec.mainClass=telegram.teste.TesteApplication -Dexec.args=buscar-defesa-civil
-
+      # 6. Executar método verificarEmailsSNT()
+      - name: Run Gmail fetch
+        run: mvn -f teste/pom.xml exec:java -Dexec.mainClass=telegram.teste.TesteApplication -Dexec.args=buscar-gmail
