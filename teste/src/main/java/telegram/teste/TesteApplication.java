@@ -16,4 +16,14 @@ public class TesteApplication {
         SpringApplication.run(TesteApplication.class, args);
         System.out.println("🚀 Aplicação iniciada com sucesso!");
     }
+    @Bean
+public CommandLineRunner run(ApplicationContext ctx) {
+    return args -> {
+        if (args.length > 0 && args[0].equals("buscar-defesa-civil")) {
+            DefesaCivilMonitor monitor = ctx.getBean(DefesaCivilMonitor.class);
+            monitor.buscarAvisos(); // aqui chama o método novo
+        }
+    };
+}
+
 }
