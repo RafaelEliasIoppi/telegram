@@ -12,7 +12,7 @@ jobs:
     steps:
       - name: Chamar endpoint buscar-defesa-civil
         run: |
-          curl -X POST https://humble-happiness-69g5gppq775vh55vv.github.dev//buscar-defesa-civil \
+          curl -X POST https://humble-happiness-69g5gppq775vh55vv.github.dev/buscar-defesa-civil \
             -d "destinatario=${{ secrets.TELEGRAM_CHAT_ID }}" \
             -H "Content-Type: application/x-www-form-urlencoded" \
             -H "Authorization: Bearer ${{ secrets.API_TOKEN }}"
