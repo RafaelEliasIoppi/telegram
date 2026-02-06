@@ -19,9 +19,9 @@ public class TesteApplication {
 
         String alerta = monitor.verificarAgora();
         if (!alerta.isEmpty()) {
-            telegram.sendMessage("⚠️ Alerta Defesa Civil RS:\n" + alerta, "SEU_CHAT_ID");
+            telegram.sendMessage("⚠️ Alerta Defesa Civil RS:\n" + alerta, telegram.chat.id);
         } else {
-            telegram.sendMessage("ℹ️ Nenhum alerta novo encontrado na Defesa Civil RS.", "SEU_CHAT_ID");
+            telegram.sendMessage("ℹ️ Nenhum alerta novo encontrado na Defesa Civil RS.", telegram.chat.id);
         }
     }
 }
