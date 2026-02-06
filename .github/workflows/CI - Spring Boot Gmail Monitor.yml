@@ -26,35 +26,39 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      # 3. Compilar e rodar testes
+      # 3. Restaurar último assunto salvo (cache do arquivo)
+      - name: Restore last subject file
+        uses: actions/cache@v4
+        with:
+          path: teste/ultimo_assunto.txt
+          key: gmail-subject-file
+
+      # 4. Compilar e rodar testes
       - name: Build with Maven
         run: mvn -B -f teste/pom.xml clean verify
 
-      # 4. Empacotar aplicação
+      # 5. Empacotar aplicação
       - name: Package application
         run: mvn -B -f teste/pom.xml package
 
-      # 5. Upload do artefato gerado
+      # 6. Upload do artefato gerado
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v4
         with:
           name: spring-boot-app
           path: teste/target/*.jar
 
-      # 6. Restaurar último assunto salvo (cache do arquivo)
-      - name: Restore last subject file
-        uses: actions/cache@v4
-        with:
-          path: ultimo_assunto.txt
-          key: gmail-subject-file
-
       # 7. Executar checagem de e-mails usando último assunto salvo
       - name: Run Gmail fetch (último assunto)
-        run: mvn -f teste/pom.xml exec:java -Dexec.mainClass=telegram.teste.TesteApplication
+        env:
+          GMAIL_USERNAME: ${{ secrets.GMAIL_USERNAME }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: java -jar teste/target/*.jar
 
       # 8. Salvar último assunto atualizado (cache do arquivo)
       - name: Save last subject file
         uses: actions/cache@v4
         with:
-          path: ultimo_assunto.txt
+          path: teste/ultimo_assunto.txt
           key: gmail-subject-file
