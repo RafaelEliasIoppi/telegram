@@ -64,7 +64,17 @@
 			<artifactId>jsoup</artifactId>
 			<version>1.17.2</version>
 		</dependency>
-	</dependencies>
+	<dependency>
+		<groupId>jakarta.mail</groupId>
+		<artifactId>jakarta.mail-api</artifactId>
+	</dependency>
+
+	<dependency>
+		<groupId>org.eclipse.angus</groupId>
+		<artifactId>angus-mail</artifactId>
+		<scope>runtime</scope>
+	</dependency>
+		</dependencies>
 
 	<build>
 		<plugins>

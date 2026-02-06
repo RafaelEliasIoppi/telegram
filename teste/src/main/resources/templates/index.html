@@ -62,6 +62,14 @@
             font-size: 14px;
             color: #555;
         }
+        .resultado {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f0f8ff;
+            border: 1px solid #0078d7;
+            border-radius: 6px;
+            color: #333;
+        }
     </style>
 </head>
 <body>
@@ -80,13 +88,19 @@
             <button type="submit">📤 Enviar Mensagem</button>
         </form>
 
-        <!-- Novo botão para buscar avisos da Defesa Civil -->
-        <form action="/buscar-defesa-civil" method="post">
-            <button type="submit">⚠️ Buscar Avisos da Defesa Civil</button>
+        <!-- Botão para buscar e-mails do SNT -->
+        <form action="/buscar-gmail" method="post">
+            <button type="submit">📧 Buscar E-mails do SNT</button>
         </form>
 
         <div class="info">
             As mensagens serão enviadas diretamente para o Telegram via API.
+        </div>
+
+        <!-- Aqui aparecerá o resultado -->
+        <div class="resultado">
+            <!-- O controller deve injetar a resposta aqui -->
+            <p th:text="${mensagem}"></p>
         </div>
     </div>
 </body>
