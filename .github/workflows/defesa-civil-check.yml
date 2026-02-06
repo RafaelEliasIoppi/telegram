@@ -1,18 +1,46 @@
-name: Defesa Civil RS Monitor
+name: CI - Spring Boot Defesa Civil
 
 on:
-  schedule:
-    # roda a cada minuto
-    - cron: '*/1 * * * *'
-  workflow_dispatch: # permite rodar manualmente também
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch: # execução manual
+  schedule:          # execução automática a cada 15 min
+    - cron: "*/15 * * * *"
 
 jobs:
-  check-alerts:
+  build-and-run:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Chamar endpoint buscar-defesa-civil
-        run: |
-          curl -X POST https://humble-happiness-69g5gppq775vh55vv.github.dev/buscar-defesa-civil \
-            -d "destinatario=${{ secrets.TELEGRAM_CHAT_ID }}" \
-            -H "Content-Type: application/x-www-form-urlencoded" \
-            -H "Authorization: Bearer ${{ secrets.API_TOKEN }}"
+      # 1. Checkout do repositório
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # 2. Configuração do JDK
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      # 3. Compilar e rodar testes
+      - name: Build with Maven
+        run: mvn -B -f teste/pom.xml clean verify
+
+      # 4. Empacotar aplicação
+      - name: Package application
+        run: mvn -B -f teste/pom.xml package
+
+      # 5. Upload do artefato gerado
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: spring-boot-app
+          path: teste/target/*.jar
+
+      # 6. Executar método buscarAvisos()
+      - name: Run Defesa Civil fetch
+        run: mvn -f teste/pom.xml spring-boot:run -Dspring-boot.run.arguments=buscar-defesa-civil
