@@ -42,16 +42,16 @@ public class MessageController {
     }
 
     @PostMapping("/buscar-defesa-civil")
-public String buscarDefesaCivil(@RequestParam(required = false) String destinatario) {
-    // chama o monitor para pegar aviso atual
-    String alerta = defesaCivilMonitor.verificarAgora(); // crie um método público que retorne aviso
-    if (!alerta.isEmpty()) {
-        telegramService.sendMessage("⚠️ Alerta Defesa Civil RS:\n" + alerta, destinatario);
-    } else {
-        telegramService.sendMessage("ℹ️ Nenhum alerta novo encontrado na Defesa Civil RS.", destinatario);
-    }
+    public String buscarDefesaCivil(@RequestParam(required = false) String destinatario) {
+        // chama o monitor para pegar aviso atual
+        String alerta = defesaCivilMonitor.verificarAgora(); // crie um método público que retorne aviso
+        if (!alerta.isEmpty()) {
+            telegramService.sendMessage("⚠️ Alerta Defesa Civil RS:\n" + alerta, destinatario);
+        } else {
+            telegramService.sendMessage("ℹ️ Nenhum alerta novo encontrado na Defesa Civil RS.", destinatario);
+        }
 
-    return "sucesso"; // ou "redirect:/sucesso.html" se estiver em static
-}
+        return "sucesso"; // ou "redirect:/sucesso.html" se estiver em static
+    }
 
 }
