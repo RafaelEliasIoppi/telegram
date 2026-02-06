@@ -13,11 +13,10 @@ public class TesteApplication {
         ApplicationContext ctx = SpringApplication.run(TesteApplication.class, args);
         System.out.println("🚀 Aplicação iniciada com sucesso!");
 
-        // 🔹 Chama o GmailMonitor usando o último assunto salvo
+        // 🔹 Executa a última pesquisa usando o assunto salvo em arquivo
         GmailMonitor gmailMonitor = ctx.getBean(GmailMonitor.class);
         gmailMonitor.verificarEmailsUltimoAssunto();
 
-        // 🔹 Encerra a aplicação após rodar
         System.exit(0);
     }
 }
