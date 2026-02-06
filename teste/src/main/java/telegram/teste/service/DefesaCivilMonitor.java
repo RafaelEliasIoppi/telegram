@@ -23,8 +23,7 @@ public class DefesaCivilMonitor {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
-    private static final String DEFESA_CIVIL_URL =
-            "https://www.defesacivil.rs.gov.br/avisos-e-boletins";
+    private static final String DEFESA_CIVIL_URL = "https://www.defesacivil.rs.gov.br/avisos-e-boletins";
 
     private String ultimoAviso = "";
 
@@ -108,5 +107,10 @@ private String parseAviso(Document doc) {
 
     return "";
 }
+
+public void buscarAvisos() {
+    verificarAgora();
+}
+
 
 }
