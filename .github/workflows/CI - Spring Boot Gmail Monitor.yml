@@ -82,5 +82,5 @@ jobs:
       - name: Save last subject file
         uses: actions/cache@v4
         with:
-          path: teste/ultimo_assunto.txt
+          path: ultimo_assunto.txt
           key: gmail-subject-file
