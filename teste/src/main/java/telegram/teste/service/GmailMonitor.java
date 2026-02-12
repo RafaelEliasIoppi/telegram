@@ -73,7 +73,7 @@ public class GmailMonitor {
  */
 public String carregarUltimoAssunto() {
     try {
-        File file = new File(ARQUIVO_ASSUNTO);
+        File file = new File(arquivoAssunto); // usar o @Value
         logger.info("Tentando carregar assunto do arquivo: {}", file.getAbsolutePath());
 
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {
@@ -91,6 +91,7 @@ public String carregarUltimoAssunto() {
         return "alerta";
     }
 }
+
 
 
 
