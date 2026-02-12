@@ -26,21 +26,21 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      # 3. Restaurar último assunto salvo (cache do arquivo na raiz)
+      # 3. Restaurar último assunto salvo (caminho correto: teste/ultimo_assunto.txt)
       - name: Restore last subject file
         uses: actions/cache@v4
         with:
-          path: ultimo_assunto.txt
+          path: teste/ultimo_assunto.txt
           key: gmail-subject-file
 
       # 4. Debug: imprimir conteúdo do arquivo restaurado
       - name: Print last subject file
         run: |
-          if [ -f ultimo_assunto.txt ]; then
-            echo "📂 Conteúdo de ultimo_assunto.txt:"
-            cat ultimo_assunto.txt
+          if [ -f teste/ultimo_assunto.txt ]; then
+            echo "📂 Conteúdo de teste/ultimo_assunto.txt:"
+            cat teste/ultimo_assunto.txt
           else
-            echo "⚠️ Arquivo ultimo_assunto.txt não encontrado"
+            echo "⚠️ Arquivo teste/ultimo_assunto.txt não encontrado"
           fi
 
       # 5. Compilar e rodar testes (forçando usar apenas TesteApplication)
@@ -70,16 +70,8 @@ jobs:
       # 9. Debug: imprimir conteúdo atualizado do arquivo
       - name: Print updated last subject file
         run: |
-          if [ -f ultimo_assunto.txt ]; then
-            echo "📂 Conteúdo atualizado de ultimo_assunto.txt:"
-            cat ultimo_assunto.txt
+          if [ -f teste/ultimo_assunto.txt ]; then
+            echo "📂 Conteúdo atualizado de teste/ultimo_assunto.txt:"
+            cat teste/ultimo_assunto.txt
           else
-            echo "⚠️ Arquivo ultimo_assunto.txt não encontrado após execução"
-          fi
-
-      # 10. Salvar último assunto atualizado (cache do arquivo na raiz)
-      - name: Save last subject file
-        uses: actions/cache@v4
-        with:
-          path: ultimo_assunto.txt
-          key: gmail-subject-file
+            echo "⚠️ Arquivo teste/ultimo_assunto.txt não encontrado
