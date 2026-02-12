@@ -65,7 +65,8 @@ jobs:
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           GMAIL_TOKEN: ${{ secrets.GMAIL_TOKEN }}
         run: |
-          java -jar teste/target/*.jar --spring-boot.run.main-class=telegram.teste.TesteActionApplication
+          java -cp teste/target/*.jar telegram.teste.TesteActionApplication
+
 
       # 9. Debug: imprimir conteúdo atualizado do arquivo
       - name: Print updated last subject file
