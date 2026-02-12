@@ -4,26 +4,20 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "*/15 * * * *"
+
 permissions: 
- contents: write
+  contents: write
+
 jobs:
   run-gmail-monitor:
     runs-on: ubuntu-latest
 
     steps:
-<<<<<<< HEAD
-      # 1. Checkout com permissão de push
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: true
-=======
       # 1. Checkout com permissão para push
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
->>>>>>> 4891fc3866c2ce17ce43724ab476ebb2e8174000
 
       # 2. Configurar JDK 17
       - name: Set up JDK 17
@@ -39,15 +33,11 @@ jobs:
           mkdir -p teste
           touch teste/ultimo_assunto.txt
 
-<<<<<<< HEAD
-      # 4. Compilar e executar SOMENTE TesteActionApplication
-=======
-      # 4. Build somente (sem testes)
+      # 4. Build sem testes
       - name: Build application
         run: mvn -B -f teste/pom.xml clean package -DskipTests
 
       # 5. Executar SOMENTE a main específica
->>>>>>> 4891fc3866c2ce17ce43724ab476ebb2e8174000
       - name: Run TesteActionApplication
         env:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
@@ -55,34 +45,16 @@ jobs:
           GMAIL_TOKEN: ${{ secrets.GMAIL_TOKEN }}
           GMAIL_SUBJECT_FILE: teste/ultimo_assunto.txt
         run: |
-<<<<<<< HEAD
           mvn -B -f teste/pom.xml compile exec:java \
             -Dexec.mainClass=telegram.teste.TesteActionApplication \
             -Dexec.classpathScope=runtime \
             -Dspring.profiles.active=ci
 
-      # 5. Commit automático se houver alteração
-=======
-           mvn -B -f teste/pom.xml clean compile exec:java \
-           -Dexec.mainClass=telegram.teste.TesteActionApplication \
-           -Dexec.classpathScope=runtime \
-           -Dspring.profiles.active=ci
-
       # 6. Commit automático se houver alteração
->>>>>>> 4891fc3866c2ce17ce43724ab476ebb2e8174000
       - name: Commit updated subject file
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add teste/ultimo_assunto.txt
-<<<<<<< HEAD
-          if ! git diff --cached --quiet; then
-            git commit -m "Atualiza ultimo_assunto.txt [skip ci]"
-            git push
-          else
-            echo "Nenhuma alteração para commit"
-          fi
-=======
           git diff --cached --quiet || git commit -m "Atualiza ultimo_assunto.txt [skip ci]"
           git push
->>>>>>> 4891fc3866c2ce17ce43724ab476ebb2e8174000
