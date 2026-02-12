@@ -26,7 +26,7 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      # 3. Restaurar último assunto salvo (caminho correto: teste/ultimo_assunto.txt)
+      # 3. Restaurar último assunto salvo
       - name: Restore last subject file
         uses: actions/cache@v4
         with:
@@ -37,13 +37,13 @@ jobs:
       - name: Print last subject file
         run: |
           if [ -f teste/ultimo_assunto.txt ]; then
-            echo "📂 Conteúdo de teste/ultimo_assunto.txt:"
+            echo "Conteúdo de teste/ultimo_assunto.txt:"
             cat teste/ultimo_assunto.txt
           else
-            echo "⚠️ Arquivo teste/ultimo_assunto.txt não encontrado"
+            echo "Arquivo teste/ultimo_assunto.txt não encontrado"
           fi
 
-      # 5. Compilar e rodar testes (forçando usar apenas TesteApplication)
+      # 5. Compilar e rodar testes
       - name: Build with Maven
         run: mvn -B -f teste/pom.xml clean verify -Dspring-boot.run.main-class=telegram.teste.TesteApplication
 
@@ -71,7 +71,15 @@ jobs:
       - name: Print updated last subject file
         run: |
           if [ -f teste/ultimo_assunto.txt ]; then
-            echo "📂 Conteúdo atualizado de teste/ultimo_assunto.txt:"
+            echo "Conteúdo atualizado de teste/ultimo_assunto.txt:"
             cat teste/ultimo_assunto.txt
           else
-            echo "⚠️ Arquivo teste/ultimo_assunto.txt não encontrado
+            echo "Arquivo teste/ultimo_assunto.txt não encontrado após execução"
+          fi
+
+      # 10. Salvar último assunto atualizado
+      - name: Save last subject file
+        uses: actions/cache@v4
+        with:
+          path: teste/ultimo_assunto.txt
+          key: gmail-subject-file
