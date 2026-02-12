@@ -64,7 +64,7 @@ jobs:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           GMAIL_TOKEN: ${{ secrets.GMAIL_TOKEN }}
-          GMAIL_SUBJECT_FILE: teste/ultimo_assunto.txt   # 🔹 variável necessária
+          GMAIL_SUBJECT_FILE: ultimo_assunto.txt   # 🔹 variável necessária
         run: |
           java -jar teste/target/*.jar
 
