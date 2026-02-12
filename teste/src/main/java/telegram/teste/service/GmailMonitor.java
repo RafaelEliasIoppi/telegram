@@ -33,6 +33,9 @@ public class GmailMonitor {
     @Autowired
     private TelegramService telegramService;
 
+    @Value("${gmail.subject.file}") 
+    private String arquivoAssunto;
+
     @Value("${telegram.chat.id}")
     private String destinatario;
 
@@ -49,7 +52,7 @@ public class GmailMonitor {
      */
    public void salvarUltimoAssunto(String assunto) {
     try {
-        File file = new File(ARQUIVO_ASSUNTO);
+        File file = new File(arquivoAssunto);
         logger.info("Salvando assunto no arquivo: {}", file.getAbsolutePath());
 
         try (FileWriter fw = new FileWriter(file)) {
