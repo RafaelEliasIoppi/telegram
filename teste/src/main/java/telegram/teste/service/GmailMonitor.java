@@ -25,7 +25,8 @@ import jakarta.mail.Store;
 @Component
 public class GmailMonitor {
     private static final Logger logger = LoggerFactory.getLogger(GmailMonitor.class);
-    private static final String ARQUIVO_ASSUNTO = "teste/ultimo_assunto.txt";
+    private static final String ARQUIVO_ASSUNTO = "ultimo_assunto.txt";
+
 
 
     @Autowired
