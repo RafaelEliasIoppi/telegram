@@ -26,29 +26,39 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      # 3. Restaurar último assunto salvo (cache do arquivo)
+      # 3. Restaurar último assunto salvo (cache do arquivo na raiz)
       - name: Restore last subject file
         uses: actions/cache@v4
         with:
-          path: teste/ultimo_assunto.txt
+          path: ultimo_assunto.txt
           key: gmail-subject-file
 
-      # 4. Compilar e rodar testes (forçando usar apenas TesteApplication)
+      # 4. Debug: imprimir conteúdo do arquivo restaurado
+      - name: Print last subject file
+        run: |
+          if [ -f ultimo_assunto.txt ]; then
+            echo "📂 Conteúdo de ultimo_assunto.txt:"
+            cat ultimo_assunto.txt
+          else
+            echo "⚠️ Arquivo ultimo_assunto.txt não encontrado"
+          fi
+
+      # 5. Compilar e rodar testes (forçando usar apenas TesteApplication)
       - name: Build with Maven
         run: mvn -B -f teste/pom.xml clean verify -Dspring-boot.run.main-class=telegram.teste.TesteApplication
 
-      # 5. Empacotar aplicação
+      # 6. Empacotar aplicação
       - name: Package application
         run: mvn -B -f teste/pom.xml package
 
-      # 6. Upload do artefato gerado
+      # 7. Upload do artefato gerado
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v4
         with:
           name: spring-boot-app
           path: teste/target/*.jar
 
-      # 7. Executar aplicação Spring Boot usando o main específico para GitHub Actions
+      # 8. Executar aplicação Spring Boot usando o main específico para GitHub Actions
       - name: Run Gmail fetch (último assunto)
         env:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
@@ -57,9 +67,19 @@ jobs:
         run: |
           java -jar teste/target/*.jar --spring-boot.run.main-class=telegram.teste.TesteActionApplication
 
-      # 8. Salvar último assunto atualizado (cache do arquivo)
+      # 9. Debug: imprimir conteúdo atualizado do arquivo
+      - name: Print updated last subject file
+        run: |
+          if [ -f ultimo_assunto.txt ]; then
+            echo "📂 Conteúdo atualizado de ultimo_assunto.txt:"
+            cat ultimo_assunto.txt
+          else
+            echo "⚠️ Arquivo ultimo_assunto.txt não encontrado após execução"
+          fi
+
+      # 10. Salvar último assunto atualizado (cache do arquivo na raiz)
       - name: Save last subject file
         uses: actions/cache@v4
         with:
-          path: teste/ultimo_assunto.txt
+          path: ultimo_assunto.txt
           key: gmail-subject-file
