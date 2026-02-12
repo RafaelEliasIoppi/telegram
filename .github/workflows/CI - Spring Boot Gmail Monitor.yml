@@ -43,12 +43,13 @@ jobs:
             echo "Arquivo teste/ultimo_assunto.txt não encontrado"
           fi
 
-      # 5. Compilar e rodar testes
+      # 5. Compilar e rodar testes com profile CI
       - name: Build with Maven
-        run: mvn -B -f teste/pom.xml clean verify -Dspring-boot.run.main-class=telegram.teste.TesteActionApplication
-      # 6. Empacotar aplicação
+        run: mvn -B -f teste/pom.xml clean verify -Pci
+
+      # 6. Empacotar aplicação com profile CI
       - name: Package application
-        run: mvn -B -f teste/pom.xml package
+        run: mvn -B -f teste/pom.xml package -Pci
 
       # 7. Upload do artefato gerado
       - name: Upload JAR artifact
@@ -64,7 +65,7 @@ jobs:
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           GMAIL_TOKEN: ${{ secrets.GMAIL_TOKEN }}
         run: |
-          java -Dloader.main=telegram.teste.TesteActionApplication -jar teste/target/*.jar
+          java -jar teste/target/*.jar
 
       # 9. Debug: imprimir conteúdo atualizado do arquivo
       - name: Print updated last subject file
