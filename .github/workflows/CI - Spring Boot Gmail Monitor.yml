@@ -1,24 +1,22 @@
-name: CI - Spring Boot Gmail Monitor
+name: CI - Gmail Monitor Action
 
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
   workflow_dispatch:
   schedule:
     - cron: "*/15 * * * *"
 
 jobs:
-  build-and-run:
+  run-gmail-monitor:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout do repositório
+      # 1. Checkout com permissão de push
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true
 
-      # 2. Configuração do JDK
+      # 2. Configurar JDK 17
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -26,61 +24,34 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      # 3. Restaurar último assunto salvo
-      - name: Restore last subject file
-        uses: actions/cache@v4
-        with:
-          path: teste/ultimo_assunto.txt
-          key: gmail-subject-file
-
-      # 4. Debug: imprimir conteúdo do arquivo restaurado
-      - name: Print last subject file
+      # 3. Garantir que o arquivo exista
+      - name: Ensure subject file exists
         run: |
-          if [ -f teste/ultimo_assunto.txt ]; then
-            echo "Conteúdo de teste/ultimo_assunto.txt:"
-            cat teste/ultimo_assunto.txt
-          else
-            echo "Arquivo teste/ultimo_assunto.txt não encontrado"
-          fi
+          mkdir -p teste
+          touch teste/ultimo_assunto.txt
 
-      # 5. Compilar e rodar testes com profile CI
-      - name: Build with Maven
-        run: mvn -B -f teste/pom.xml clean verify -Pci
-
-      # 6. Empacotar aplicação com profile CI
-      - name: Package application
-        run: mvn -B -f teste/pom.xml package -Pci
-
-      # 7. Upload do artefato gerado
-      - name: Upload JAR artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: spring-boot-app
-          path: teste/target/*.jar
-
-      # 8. Executar aplicação Spring Boot com variável de ambiente
-      - name: Run Gmail fetch (último assunto)
+      # 4. Compilar e executar SOMENTE TesteActionApplication
+      - name: Run TesteActionApplication
         env:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           GMAIL_TOKEN: ${{ secrets.GMAIL_TOKEN }}
-          GMAIL_SUBJECT_FILE: ultimo_assunto.txt   # 🔹 variável necessária
+          GMAIL_SUBJECT_FILE: teste/ultimo_assunto.txt
         run: |
-          java -jar teste/target/*.jar
+          mvn -B -f teste/pom.xml compile exec:java \
+            -Dexec.mainClass=telegram.teste.TesteActionApplication \
+            -Dexec.classpathScope=runtime \
+            -Dspring.profiles.active=ci
 
-      # 9. Debug: imprimir conteúdo atualizado do arquivo
-      - name: Print updated last subject file
+      # 5. Commit automático se houver alteração
+      - name: Commit updated subject file
         run: |
-          if [ -f teste/ultimo_assunto.txt ]; then
-            echo "Conteúdo atualizado de teste/ultimo_assunto.txt:"
-            cat teste/ultimo_assunto.txt
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add teste/ultimo_assunto.txt
+          if ! git diff --cached --quiet; then
+            git commit -m "Atualiza ultimo_assunto.txt [skip ci]"
+            git push
           else
-            echo "Arquivo teste/ultimo_assunto.txt não encontrado após execução"
+            echo "Nenhuma alteração para commit"
           fi
-
-      # 10. Salvar último assunto atualizado
-      - name: Save last subject file
-        uses: actions/cache@v4
-        with:
-          path: ultimo_assunto.txt
-          key: gmail-subject-file

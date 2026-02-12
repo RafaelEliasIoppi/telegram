@@ -78,6 +78,8 @@
 
 	<build>
     <plugins>
+
+        <!-- Spring Boot Plugin -->
         <plugin>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-maven-plugin</artifactId>
@@ -86,6 +88,14 @@
                 <mainClass>telegram.teste.TesteApplication</mainClass>
             </configuration>
         </plugin>
+
+        <!-- Plugin para executar classe específica -->
+        <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>exec-maven-plugin</artifactId>
+            <version>3.1.0</version>
+        </plugin>
+
     </plugins>
 </build>
 
