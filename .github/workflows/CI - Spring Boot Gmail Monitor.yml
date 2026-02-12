@@ -65,8 +65,7 @@ jobs:
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           GMAIL_TOKEN: ${{ secrets.GMAIL_TOKEN }}
         run: |
-          java -cp teste/target/*.jar telegram.teste.TesteActionApplication
-
+          java -Dloader.main=telegram.teste.TesteActionApplication -jar teste/target/*.jar
 
       # 9. Debug: imprimir conteúdo atualizado do arquivo
       - name: Print updated last subject file
