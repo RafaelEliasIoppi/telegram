@@ -33,9 +33,9 @@ jobs:
           path: teste/ultimo_assunto.txt
           key: gmail-subject-file
 
-      # 4. Compilar e rodar testes
+      # 4. Compilar e rodar testes (forçando usar apenas TesteApplication)
       - name: Build with Maven
-        run: mvn -B -f teste/pom.xml clean verify
+        run: mvn -B -f teste/pom.xml clean verify -Dspring-boot.run.main-class=telegram.teste.TesteApplication
 
       # 5. Empacotar aplicação
       - name: Package application
