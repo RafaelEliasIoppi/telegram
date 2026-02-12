@@ -11,14 +11,18 @@ import telegram.teste.service.GmailMonitor;
 public class TesteActionApplication {
 
     public static void main(String[] args) {
+        // Inicializa a aplicação Spring Boot com o profile "ci"
         SpringApplication app = new SpringApplication(TesteActionApplication.class);
-        app.setAdditionalProfiles("ci"); // ativa o profile "ci"
+        app.setAdditionalProfiles("ci");
         ApplicationContext ctx = app.run(args);
 
         System.out.println("⚙️ Execução para GitHub Actions iniciada!");
+
+        // Executa apenas uma vez a verificação de e-mails
         GmailMonitor gmailMonitor = ctx.getBean(GmailMonitor.class);
         gmailMonitor.verificarEmailsUltimoAssunto();
 
+        // Encerra a aplicação após a execução
         int exitCode = SpringApplication.exit(ctx);
         System.exit(exitCode);
     }
