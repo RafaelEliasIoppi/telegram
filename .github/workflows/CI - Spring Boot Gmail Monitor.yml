@@ -45,8 +45,7 @@ jobs:
 
       # 5. Compilar e rodar testes
       - name: Build with Maven
-        run: mvn -B -f teste/pom.xml clean verify -Dspring-boot.run.main-class=telegram.teste.TesteApplication
-
+        run: mvn -B -f teste/pom.xml clean verify -Dspring-boot.run.main-class=telegram.teste.TesteActionApplication
       # 6. Empacotar aplicação
       - name: Package application
         run: mvn -B -f teste/pom.xml package
