@@ -11,13 +11,14 @@ import telegram.teste.service.GmailMonitor;
 public class TesteActionApplication {
 
     public static void main(String[] args) {
-        ApplicationContext ctx = SpringApplication.run(TesteActionApplication.class, args);
-        System.out.println("⚙️ Execução para GitHub Actions iniciada!");
+        SpringApplication app = new SpringApplication(TesteActionApplication.class);
+        app.setAdditionalProfiles("ci"); // ativa o profile "ci"
+        ApplicationContext ctx = app.run(args);
 
+        System.out.println("⚙️ Execução para GitHub Actions iniciada!");
         GmailMonitor gmailMonitor = ctx.getBean(GmailMonitor.class);
         gmailMonitor.verificarEmailsUltimoAssunto();
 
-        // Finaliza corretamente para o pipeline
         int exitCode = SpringApplication.exit(ctx);
         System.exit(exitCode);
     }
