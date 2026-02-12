@@ -42,9 +42,10 @@ jobs:
           GMAIL_TOKEN: ${{ secrets.GMAIL_TOKEN }}
           GMAIL_SUBJECT_FILE: teste/ultimo_assunto.txt
         run: |
-           mvn -f teste/pom.xml spring-boot:run \
-           -Dspring-boot.run.main-class=telegram.teste.TesteActionApplication \
-           -Dspring-boot.run.profiles=ci
+           mvn -B -f teste/pom.xml clean compile exec:java \
+           -Dexec.mainClass=telegram.teste.TesteActionApplication \
+           -Dexec.classpathScope=runtime \
+           -Dspring.profiles.active=ci
 
       # 6. Commit automático se houver alteração
       - name: Commit updated subject file
