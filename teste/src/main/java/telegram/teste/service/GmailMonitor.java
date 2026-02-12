@@ -48,9 +48,12 @@ public class GmailMonitor {
      */
     public void salvarUltimoAssunto(String assunto) {
         try {
-            File file = new File(arquivoAssunto);
-            file.getParentFile().mkdirs(); // garante que a pasta exista
-            logger.info("Salvando assunto no arquivo: {}", file.getAbsolutePath());
+           File file = new File(arquivoAssunto);
+            File parent = file.getParentFile();
+            if (parent != null) {
+                parent.mkdirs(); // só cria se houver diretório pai
+            }
+
 
             try (FileWriter fw = new FileWriter(file)) {
                 fw.write(assunto.trim().toLowerCase());
