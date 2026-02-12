@@ -81,7 +81,7 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
-				<configuration> <mainClass>telegram.teste.TesteActionApplication</mainClass>
+				<configuration> <mainClass>telegram.teste.TesteApplication</mainClass>
 				</configuration>
 			</plugin>
 		</plugins>
