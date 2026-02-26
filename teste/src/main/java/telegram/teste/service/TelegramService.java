@@ -1,5 +1,6 @@
 package telegram.teste.service;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -48,10 +49,11 @@ public class TelegramService {
 
         String url = "https://api.telegram.org/bot" + token + "/sendMessage";
 
-        Map<String, String> body = Map.of(
-                "chat_id", chatId,
-                "text", text
-        );
+        // Ajuste aqui: Usamos um HashMap para incluir o parse_mode
+        Map<String, String> body = new HashMap<>();
+        body.put("chat_id", chatId);
+        body.put("text", text);
+        body.put("parse_mode", "Markdown"); // Permite negrito (*), itálico (_) e códigos (`)
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);

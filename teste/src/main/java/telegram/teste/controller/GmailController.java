@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import telegram.teste.service.GmailMonitor;
+import telegram.teste.service.TelegramService;
 
 @RestController
 @RequestMapping("/gmail")
@@ -20,9 +21,11 @@ public class GmailController {
     @Autowired
     private GmailMonitor gmailMonitor;
 
+    @Autowired
+    private TelegramService telegramService;
+
     /**
-     * Endpoint para buscar e-mails por assunto informado.
-     * Exemplo: GET /gmail/check-assunto?assunto=alerta
+     * Busca e-mails por assunto e ENVIA para o Telegram formatado.
      */
     @GetMapping("/check-assunto")
     public List<Map<String, String>> checkEmailsPorAssunto(@RequestParam String assunto) {
@@ -32,7 +35,24 @@ public class GmailController {
             gmailMonitor.salvarUltimoAssunto(assuntoNormalizado);
 
             emails = gmailMonitor.buscarEmailsPorAssunto(assuntoNormalizado);
-            if (emails.isEmpty()) {
+            
+            if (!emails.isEmpty()) {
+                // Monta a mensagem formatada para o Telegram (Markdown)
+                StringBuilder sb = new StringBuilder();
+                sb.append("📩 *RELATÓRIO VIA API*\n");
+                sb.append("------------------------------------------\n");
+                sb.append("🔍 _Filtro:_ `").append(assuntoNormalizado).append("`\n\n");
+
+                for (int i = 0; i < emails.size(); i++) {
+                    Map<String, String> email = emails.get(i);
+                    sb.append(i + 1).append("️⃣ *De:* ").append(email.get("remetente")).append("\n");
+                    sb.append("📌 *Assunto:* ").append(email.get("assunto")).append("\n");
+                    sb.append("------------------------------------------\n");
+                }
+                
+                // Envia ao Telegram usando o Service que configuramos com parse_mode
+                telegramService.sendMessage(sb.toString(), null); 
+            } else {
                 Map<String, String> aviso = new HashMap<>();
                 aviso.put("info", "Nenhum e-mail encontrado com assunto: " + assunto);
                 emails.add(aviso);
@@ -46,31 +66,24 @@ public class GmailController {
     }
 
     /**
-     * Endpoint para buscar e-mails usando o último assunto salvo.
-     * Exemplo: GET /gmail/check-ultimo
+     * Aciona o monitoramento automático (reaproveitando a lógica do Service).
      */
     @GetMapping("/check-ultimo")
-    public List<Map<String, String>> checkEmailsUltimoAssunto() {
-        List<Map<String, String>> emails = new ArrayList<>();
+    public Map<String, String> checkEmailsUltimoAssunto() {
+        Map<String, String> resposta = new HashMap<>();
         try {
-            String ultimoAssunto = gmailMonitor.carregarUltimoAssunto();
-            emails = gmailMonitor.buscarEmailsPorAssunto(ultimoAssunto);
-            if (emails.isEmpty()) {
-                Map<String, String> aviso = new HashMap<>();
-                aviso.put("info", "Nenhum e-mail encontrado para o último assunto salvo: " + ultimoAssunto);
-                emails.add(aviso);
-            }
+            // Aqui chamamos o método que já criamos no Monitor, 
+            // que já tem a lógica de não repetir IDs e formatar a mensagem.
+            gmailMonitor.verificarEmailsUltimoAssunto();
+            resposta.put("status", "Processamento de verificação concluído.");
         } catch (Exception e) {
-            Map<String, String> erro = new HashMap<>();
-            erro.put("erro", e.getMessage());
-            emails.add(erro);
+            resposta.put("erro", e.getMessage());
         }
-        return emails;
+        return resposta;
     }
 
     /**
-     * Endpoint para retornar o conteúdo completo de um e-mail pelo ID.
-     * Exemplo: GET /gmail/conteudo?id=<Message-ID>
+     * Retorna o conteúdo completo de um e-mail pelo ID.
      */
     @GetMapping("/conteudo")
     public Map<String, String> getEmailContent(@RequestParam String id) {
@@ -82,7 +95,6 @@ public class GmailController {
             for (Map<String, String> email : emails) {
                 if (email.get("id").equals(id)) {
                     resultado.putAll(email);
-                    resultado.put("conteudo", email.getOrDefault("conteudo", "(sem corpo disponível)"));
                     return resultado;
                 }
             }

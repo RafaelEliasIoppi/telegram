@@ -51,9 +51,8 @@ public class GmailMonitor {
            File file = new File(arquivoAssunto);
             File parent = file.getParentFile();
             if (parent != null) {
-                parent.mkdirs(); // só cria se houver diretório pai
+                parent.mkdirs();
             }
-
 
             try (FileWriter fw = new FileWriter(file)) {
                 fw.write(assunto.trim().toLowerCase());
@@ -70,26 +69,19 @@ public class GmailMonitor {
     public String carregarUltimoAssunto() {
         try {
             File file = new File(arquivoAssunto);
-            logger.info("Tentando carregar assunto do arquivo: {}", file.getAbsolutePath());
+            if (!file.exists()) return "alerta";
 
             try (BufferedReader br = new BufferedReader(new FileReader(file))) {
                 String linha = br.readLine();
-                if (linha != null && !linha.trim().isEmpty()) {
-                    logger.info("Assunto carregado: {}", linha.trim().toLowerCase());
-                    return linha.trim().toLowerCase();
-                } else {
-                    logger.warn("Arquivo existe mas está vazio, usando fallback 'alerta'");
-                    return "alerta";
-                }
+                return (linha != null && !linha.trim().isEmpty()) ? linha.trim().toLowerCase() : "alerta";
             }
         } catch (IOException e) {
-            logger.warn("Nenhum assunto salvo, usando fallback 'alerta'. Erro: {}", e.getMessage());
             return "alerta";
         }
     }
 
     /**
-     * Busca e-mails por assunto flexível e retorna dados completos (inclui corpo).
+     * Busca e-mails por assunto flexível.
      */
     public List<Map<String, String>> buscarEmailsPorAssunto(String assuntoNormalizado) throws Exception {
         Properties props = new Properties();
@@ -98,16 +90,12 @@ public class GmailMonitor {
         List<Map<String, String>> resultado = new ArrayList<>();
 
         try (Store store = session.getStore("imaps")) {
-            logger.info("Conectando ao Gmail...");
             store.connect("imap.gmail.com", username, appPassword);
-            logger.info("Conectado. Abrindo INBOX...");
             try (Folder inbox = store.getFolder("INBOX")) {
                 inbox.open(Folder.READ_ONLY);
 
                 int total = inbox.getMessageCount();
-                int start = Math.max(1, total - 50); // 🔹 pega apenas os últimos 50
-                logger.info("Total de mensagens: {}. Buscando da {} até {}", total, start, total);
-
+                int start = Math.max(1, total - 50); 
                 Message[] messages = inbox.getMessages(start, total);
 
                 for (Message msg : messages) {
@@ -121,11 +109,7 @@ public class GmailMonitor {
                         dados.put("data", msg.getReceivedDate() != null ? msg.getReceivedDate().toString() : "");
 
                         Object content = msg.getContent();
-                        if (content instanceof String) {
-                            dados.put("conteudo", (String) content);
-                        } else {
-                            dados.put("conteudo", "(conteúdo não textual)");
-                        }
+                        dados.put("conteudo", (content instanceof String) ? (String) content : "(conteúdo não textual)");
 
                         resultado.add(dados);
                     }
@@ -136,7 +120,7 @@ public class GmailMonitor {
     }
 
     /**
-     * Verifica se há novos e-mails para o último assunto salvo e envia alerta ao Telegram.
+     * Verifica e envia alerta com formatação Markdown.
      */
     public void verificarEmailsUltimoAssunto() {
         try {
@@ -149,27 +133,25 @@ public class GmailMonitor {
 
                 if (!id.equals(ultimoEmailId)) {
                     ultimoEmailId = id;
-                    telegramService.sendMessage(
-                        "📧 Novo e-mail:\nDe: " + ultimo.get("remetente") +
-                        "\nAssunto: " + ultimo.get("assunto"),
-                        destinatario
-                    );
+                    
+                    // Formatação Markdown para o novo e-mail
+                    String msgTelegram = "🔔 *NOVO E-MAIL DETECTADO*\n" +
+                                         "------------------------------------------\n" +
+                                         "👤 *De:* " + ultimo.get("remetente") + "\n" +
+                                         "📌 *Assunto:* " + ultimo.get("assunto") + "\n" +
+                                         "------------------------------------------";
+                    
+                    telegramService.sendMessage(msgTelegram, destinatario);
                 } else {
                     logger.info("Nenhum e-mail novo para o assunto '{}'.", assunto);
-                    telegramService.sendMessage(
-                        "ℹ️ Nenhum e-mail novo para o assunto '" + assunto + "'.",
-                        destinatario
-                    );
+                    // Opcional: remover este envio se não quiser spam de "nada novo"
+                    telegramService.sendMessage("ℹ️ _Sem novas atualizações para:_ `" + assunto + "`", destinatario);
                 }
             } else {
-                logger.info("Nenhum e-mail encontrado para o assunto '{}'.", assunto);
-                telegramService.sendMessage(
-                    "🔍 Nenhum e-mail encontrado para o assunto '" + assunto + "'.",
-                    destinatario
-                );
+                telegramService.sendMessage("🔍 _Nenhum e-mail encontrado para o termo:_ `" + assunto + "`", destinatario);
             }
         } catch (Exception e) {
-            telegramService.sendMessage("❌ Erro ao consultar Gmail: " + e.getMessage(), destinatario);
+            telegramService.sendMessage("❌ *Erro ao consultar Gmail:* " + e.getMessage(), destinatario);
         }
     }
 }
