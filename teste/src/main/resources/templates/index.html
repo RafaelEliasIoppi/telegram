@@ -77,10 +77,17 @@
             <button type="submit">🔍 Buscar</button>
         </form>
 
-        <!-- Resultado injetado pelo controller -->
-        <div class="resultado">
-            <p th:text="${mensagem}"></p>
-        </div>
+    <p th:if="${status}" th:text="${status}" style="text-align:center; font-weight:bold; color:#0078d7;"></p>
+
+<div class="resultado" th:if="${not #lists.isEmpty(mensagens)}">
+    <ul style="list-style: none; padding: 0;">
+        <li th:each="msg : ${mensagens}" style="margin-bottom: 15px; border-bottom: 1px solid #ddd; padding-bottom: 10px;">
+            <strong style="color: #0078d7;">De:</strong> <span th:text="${msg.remetente}"></span><br>
+            <strong>Assunto:</strong> <span th:text="${msg.assunto}"></span><br>
+            <small style="color: #666;">📅 Data: <span th:text="${msg.data}"></span></small>
+        </li>
+    </ul>
+</div>
     </div>
 </body>
 </html>

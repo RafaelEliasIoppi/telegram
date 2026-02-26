@@ -58,37 +58,35 @@ public class MessageController {
     /**
      * Busca e-mails por assunto informado manualmente.
      */
-    @PostMapping("/buscar-gmail-assunto")
-    public String buscarPorAssunto(@RequestParam String assunto,
-                                   @RequestParam(required = false) String destinatario,
-                                   Model model) {
-        String assuntoNormalizado = assunto.trim().toLowerCase();
-        gmailMonitor.salvarUltimoAssunto(assuntoNormalizado);
+   @PostMapping("/buscar-gmail-assunto")
+public String buscarPorAssunto(@RequestParam String assunto,
+                               @RequestParam(required = false) String destinatario,
+                               Model model) {
+    String assuntoNormalizado = assunto.trim().toLowerCase();
+    gmailMonitor.salvarUltimoAssunto(assuntoNormalizado);
 
-        try {
-            List<Map<String, String>> emails = gmailMonitor.buscarEmailsPorAssunto(assuntoNormalizado);
+    try {
+        List<Map<String, String>> emails = gmailMonitor.buscarEmailsPorAssunto(assuntoNormalizado);
 
-            if (!emails.isEmpty()) {
-                StringBuilder sb = new StringBuilder("📧 E-mails encontrados:\n");
-                for (Map<String, String> email : emails) {
-                    sb.append("De: ").append(email.get("remetente"))
-                      .append("\nAssunto: ").append(email.get("assunto"))
-                      .append("\nData: ").append(email.get("data"))
-                      .append("\n\n");
-                }
-                telegramService.sendMessage(sb.toString(), destinatario);
-                model.addAttribute("mensagem", sb.toString());
-            } else {
-                String msg = "ℹ️ Nenhum e-mail encontrado com assunto: " + assunto;
-                telegramService.sendMessage(msg, destinatario);
-                model.addAttribute("mensagem", msg);
+        if (!emails.isEmpty()) {
+            // 1. Prepara e envia para o Telegram
+            StringBuilder sb = new StringBuilder("📧 E-mails encontrados:\n\n");
+            for (Map<String, String> email : emails) {
+                sb.append("De: ").append(email.get("remetente")).append("\n")
+                  .append("Assunto: ").append(email.get("assunto")).append("\n\n");
             }
-        } catch (Exception e) {
-            String erro = "❌ Erro ao consultar Gmail: " + e.getMessage();
-            telegramService.sendMessage(erro, destinatario);
-            model.addAttribute("mensagem", erro);
-        }
+            telegramService.sendMessage(sb.toString(), destinatario);
 
-        return "index";
+            // 2. Envia a LISTA real para o HTML (Thymeleaf)
+            model.addAttribute("mensagens", emails);
+            model.addAttribute("status", "Sucesso! " + emails.size() + " e-mail(s) encontrado(s).");
+        } else {
+            model.addAttribute("status", "ℹ️ Nenhum e-mail encontrado para: " + assunto);
+        }
+    } catch (Exception e) {
+        model.addAttribute("status", "❌ Erro: " + e.getMessage());
     }
+
+    return "index";
+}
 }
