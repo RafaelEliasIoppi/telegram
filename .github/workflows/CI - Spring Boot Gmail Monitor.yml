@@ -41,11 +41,11 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           
        
+       
         run: |
-          mvn -B -f teste/pom.xml exec:java \
+          mvn -B -f teste/pom.xml compile exec:java \
             -Dexec.mainClass="telegram.teste.TesteApplication" \
             -Dspring.profiles.active=ci
-
       - name: Commit updated subject file
         run: |
           git config user.name "github-actions"
