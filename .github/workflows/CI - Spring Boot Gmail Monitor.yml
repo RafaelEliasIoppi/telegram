@@ -13,13 +13,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout com permissão para push
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      # 2. Configurar JDK 17
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -27,34 +25,27 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      # 3. Garantir que o arquivo exista
       - name: Ensure subject file exists
         run: |
           mkdir -p teste
           touch teste/ultimo_assunto.txt
 
-      # 4. Build sem testes
       - name: Build application
         run: mvn -B -f teste/pom.xml clean package -DskipTests
 
-      # 5. Executar SOMENTE a main específica
-      - name: Run TesteActionApplication
+      - name: Run Telegram Monitor
         env:
-          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-          GMAIL_TOKEN: ${{ secrets.GMAIL_TOKEN }}
-          GMAIL_SUBJECT_FILE: teste/ultimo_assunto.txt
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }} 
+          # Mapeamento exato para o @Value("${telegram.bot.token}")
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          # Mapeamento exato para o @Value("${telegram.chat.id}")
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          GMAIL_USERNAME: ${{ secrets.GMAIL_USERNAME }}        # 🔹 adicionado
-          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }} # 🔹 adicionado
+          
+       
         run: |
-          mvn -B -f teste/pom.xml compile exec:java \
-            -Dexec.mainClass=telegram.teste.TesteActionApplication \
-            -Dexec.classpathScope=runtime \
+          mvn -B -f teste/pom.xml exec:java \
+            -Dexec.mainClass="telegram.teste.TesteApplication" \
             -Dspring.profiles.active=ci
 
-      # 6. Commit automático se houver alteração
       - name: Commit updated subject file
         run: |
           git config user.name "github-actions"
