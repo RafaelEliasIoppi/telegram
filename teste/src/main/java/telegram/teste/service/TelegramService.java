@@ -14,6 +14,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import jakarta.annotation.PostConstruct;
+
 @Service
 public class TelegramService {
 
@@ -77,4 +79,11 @@ public class TelegramService {
             logger.error("Falha ao enviar mensagem para Telegram: {}", e.getMessage(), e);
         }
     }
+
+    @PostConstruct
+        public void init() {
+            logger.info("Token configurado? {}", token != null && !token.isBlank());
+            logger.info("ChatId configurado? {}", defaultChatId != null && !defaultChatId.isBlank());
+    }
+
 }
