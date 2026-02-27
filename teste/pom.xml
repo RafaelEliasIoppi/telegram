@@ -116,19 +116,8 @@
 
 	<profiles>
 	    <profile>
-	        <id>ci</id>
-	        <build>
-	            <plugins>
-	                <plugin>
-	                    <groupId>org.springframework.boot</groupId>
-	                    <artifactId>spring-boot-maven-plugin</artifactId>
-	                    <configuration>
-	                        <!-- Classe principal para GitHub Actions -->
-	                        <mainClass>telegram.teste.TesteActionApplication</mainClass>
-	                    </configuration>
-	                </plugin>
-	            </plugins>
-	        </build>
+	       
+	      
 	    </profile>
 	</profiles>
 

@@ -2,92 +2,58 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Buscar E-mails por Assunto</title>
+    <title>Envio para Telegram</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: linear-gradient(135deg, #f4f4f4, #e0eafc);
-            margin: 0;
-            padding: 40px;
-        }
-        .container {
-            background: #fff;
-            padding: 25px;
-            border-radius: 10px;
-            max-width: 500px;
-            margin: auto;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-        h2 {
-            text-align: center;
-            color: #0078d7;
-            margin-bottom: 20px;
-        }
-        label {
-            display: block;
-            margin-top: 15px;
-            font-weight: bold;
-            color: #333;
-        }
-        input {
-            width: 100%;
-            padding: 12px;
-            margin-top: 5px;
-            border-radius: 6px;
-            border: 1px solid #ccc;
-            transition: border-color 0.3s;
-        }
-        input:focus {
-            border-color: #0078d7;
-            outline: none;
-        }
-        button {
-            width: 100%;
-            padding: 12px;
-            background: #0078d7;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            margin-top: 20px;
-            font-size: 16px;
-            transition: background 0.3s;
-        }
-        button:hover {
-            background: #005fa3;
-        }
-        .resultado {
-            margin-top: 20px;
-            padding: 15px;
-            background: #f0f8ff;
-            border: 1px solid #0078d7;
-            border-radius: 6px;
-            color: #333;
-        }
+        body { font-family: Arial, sans-serif; margin: 30px; background-color: #f9f9f9; }
+        h1 { color: #2c3e50; }
+        form { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        label { display: block; margin-top: 10px; font-weight: bold; }
+        input, textarea { width: 100%; padding: 8px; margin-top: 5px; border-radius: 4px; border: 1px solid #ccc; }
+        button { margin-top: 15px; padding: 10px 20px; background: #3498db; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #2980b9; }
+        .mensagem { margin-top: 20px; padding: 10px; background: #eafaf1; border: 1px solid #2ecc71; border-radius: 4px; color: #2c3e50; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h2>📧 Buscar E-mails por Assunto</h2>
+    <h1>Enviar para Telegram</h1>
 
-        <!-- Formulário único para buscar e-mails por assunto -->
-        <form action="/buscar-gmail-assunto" method="post">
-            <label for="assunto">Assunto do e-mail:</label>
-            <input type="text" id="assunto" name="assunto" placeholder="Digite o assunto para buscar" required>
-            <button type="submit">🔍 Buscar</button>
-        </form>
+    <!-- Formulário para enviar só texto -->
+    <form action="/enviar" method="post">
+        <h2>Enviar Mensagem</h2>
+        <label for="titulo">Título:</label>
+        <input type="text" id="titulo" name="titulo" required>
 
-    <p th:if="${status}" th:text="${status}" style="text-align:center; font-weight:bold; color:#0078d7;"></p>
+        <label for="conteudo">Conteúdo:</label>
+        <textarea id="conteudo" name="conteudo" rows="4" required></textarea>
 
-<div class="resultado" th:if="${not #lists.isEmpty(mensagens)}">
-    <ul style="list-style: none; padding: 0;">
-        <li th:each="msg : ${mensagens}" style="margin-bottom: 15px; border-bottom: 1px solid #ddd; padding-bottom: 10px;">
-            <strong style="color: #0078d7;">De:</strong> <span th:text="${msg.remetente}"></span><br>
-            <strong>Assunto:</strong> <span th:text="${msg.assunto}"></span><br>
-            <small style="color: #666;">📅 Data: <span th:text="${msg.data}"></span></small>
-        </li>
-    </ul>
-</div>
+        <label for="destinatario">Chat ID (opcional):</label>
+        <input type="text" id="destinatario" name="destinatario">
+
+        <button type="submit">Enviar Mensagem</button>
+    </form>
+
+    <!-- Formulário para enviar foto + texto (upload local) -->
+    <form action="/enviar-foto-texto" method="post" enctype="multipart/form-data">
+        <h2>Enviar Foto + Texto</h2>
+        <label for="foto">Selecione a Foto:</label>
+        <input type="file" id="foto" name="foto" accept="image/*" required>
+
+        <label for="tituloFoto">Título:</label>
+        <input type="text" id="tituloFoto" name="titulo" required>
+
+        <label for="conteudoFoto">Conteúdo:</label>
+        <textarea id="conteudoFoto" name="conteudo" rows="4" required></textarea>
+
+        <label for="destinatarioFoto">Chat ID (opcional):</label>
+        <input type="text" id="destinatarioFoto" name="destinatario">
+
+        <button type="submit">Enviar Foto + Texto</button>
+    </form>
+
+    <!-- Mensagem de status -->
+    <div class="mensagem">
+        <p th:text="${mensagem}"></p>
+        <p th:text="${status}"></p>
     </div>
 </body>
 </html>
