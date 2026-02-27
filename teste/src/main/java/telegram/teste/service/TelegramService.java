@@ -34,14 +34,23 @@ public class TelegramService {
     @Value("${telegram.bot.token}") private String token;
     @Value("${telegram.chat.id}") private String defaultChatId;
 
-    private final String FILE_PATH = "/workspaces/telegram/teste/ultimo_assunto.txt";
+    // Caminho relativo para funcionar tanto no Codespace quanto no GitHub Actions
+    private final String FILE_PATH = "teste/ultimo_assunto.txt";
 
     // --- PERSISTÊNCIA ---
     public String lerUltimaPalavraSalva() {
         try {
             Path path = Paths.get(FILE_PATH);
-            return Files.exists(path) ? Files.readString(path, StandardCharsets.UTF_8).trim() : "";
-        } catch (IOException e) { return ""; }
+            if (Files.exists(path)) {
+                String conteudo = Files.readString(path, StandardCharsets.UTF_8).trim();
+                logger.info("Palavra lida do arquivo: {}", conteudo);
+                return conteudo;
+            }
+            logger.warn("Arquivo não encontrado no caminho: {}", path.toAbsolutePath());
+            return "";
+        } catch (IOException e) { 
+            return ""; 
+        }
     }
 
     public void salvarPalavraNoArquivo(String novaPalavra) {
@@ -49,7 +58,10 @@ public class TelegramService {
             Path path = Paths.get(FILE_PATH);
             Files.createDirectories(path.getParent());
             Files.writeString(path, novaPalavra, StandardCharsets.UTF_8);
-        } catch (IOException e) { logger.error("Erro ao salvar arquivo"); }
+            logger.info("Palavra '{}' salva no arquivo.", novaPalavra);
+        } catch (IOException e) { 
+            logger.error("Erro ao salvar arquivo: {}", e.getMessage()); 
+        }
     }
 
     // --- ENVIO TELEGRAM ---
@@ -66,21 +78,19 @@ public class TelegramService {
     public void sendPhotoFromUrlAsFile(String urlFoto, String caption, String destinatario) {
         try {
             logger.info("Baixando imagem para processamento: {}", urlFoto);
-            
             HttpHeaders headers = new HttpHeaders();
-            headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+            headers.set("User-Agent", "Mozilla/5.0");
             
             ResponseEntity<byte[]> response = restTemplate.exchange(urlFoto, HttpMethod.GET, new HttpEntity<>(headers), byte[].class);
             byte[] bytes = response.getBody();
 
-            if (bytes != null && bytes.length > 1000) { // Ignora arquivos minúsculos (ícones)
+            if (bytes != null && bytes.length > 1000) {
                 enviarParaTelegram(bytes, "news_image.jpg", caption, destinatario);
-                logger.info("Sucesso no envio do binário.");
             } else {
-                throw new RuntimeException("Imagem muito pequena ou nula.");
+                throw new RuntimeException("Imagem inválida.");
             }
         } catch (Exception e) {
-            logger.error("Falha ao processar: {}", e.getMessage());
+            logger.error("Falha ao processar imagem: {}", e.getMessage());
             sendMessage("🔔 *Notícia:* " + caption + "\n\n🔗 [Ver Link](" + urlFoto + ")", destinatario);
         }
     }
@@ -101,7 +111,7 @@ public class TelegramService {
         restTemplate.postForEntity(url, new HttpEntity<>(body, headers), String.class);
     }
 
-    // --- SCRAPING COM FILTRO REFORÇADO ---
+    // --- SCRAPING ---
     public String buscarImagemCNN(String palavra) throws Exception {
         Document doc = Jsoup.connect("https://www.cnnbrasil.com.br/internacional/")
                 .userAgent("Mozilla/5.0").timeout(15000).get();
@@ -116,7 +126,6 @@ public class TelegramService {
 
     private String explorarVizinhanca(Element el, int profundidade) {
         if (el == null || profundidade > 8 || el.tagName().equals("header") || el.tagName().equals("nav")) return null;
-        
         Elements imgs = el.select("img");
         for (Element img : imgs) {
             String url = extrairUrlReal(img);
@@ -136,10 +145,7 @@ public class TelegramService {
 
     private boolean isImagemValida(String url) {
         String u = url.toLowerCase();
-        // BLOQUEIO CRÍTICO: Não aceita SVG, LOGOS ou ICONES
-        if (u.contains(".svg") || u.contains("logo") || u.contains("icon") || u.contains("transparent")) {
-            return false;
-        }
+        if (u.contains(".svg") || u.contains("logo") || u.contains("icon") || u.contains("transparent")) return false;
         return u.contains(".jpg") || u.contains(".jpeg") || u.contains(".png") || u.contains(".webp");
     }
 
@@ -147,31 +153,27 @@ public class TelegramService {
         return (dest == null || dest.isBlank()) ? defaultChatId : dest;
     }
 
+    // --- FLUXO AUTOMÁTICO ---
     public void executarFluxoAutomatico() {
-    try {
-        // 1. Pega a palavra que está no arquivo (vinda de um commit anterior ou do Gmail)
-        String palavraChave = lerUltimaPalavraSalva();
+        try {
+            String palavraChave = lerUltimaPalavraSalva();
 
-        if (palavraChave == null || palavraChave.isBlank()) {
-            logger.warn("O arquivo de histórico está vazio. Nada para buscar.");
-            return;
+            if (palavraChave == null || palavraChave.isBlank()) {
+                logger.warn("O arquivo de histórico está vazio ou não existe. Nada para buscar.");
+                return;
+            }
+
+            logger.info("Executando busca automática para: {}", palavraChave);
+            String urlFoto = buscarImagemCNN(palavraChave);
+
+            if (urlFoto != null) {
+                String legenda = "🤖 *Monitoramento Automático*\n\n📌 *Termo:* " + palavraChave;
+                sendPhotoFromUrlAsFile(urlFoto, legenda, null);
+            } else {
+                logger.info("Nenhuma imagem encontrada na CNN para: {}", palavraChave);
+            }
+        } catch (Exception e) {
+            logger.error("Erro no fluxo automático: {}", e.getMessage());
         }
-
-        logger.info("Iniciando busca automática para: {}", palavraChave);
-
-        // 2. Tenta buscar a imagem na CNN
-        String urlFoto = buscarImagemCNN(palavraChave);
-
-        if (urlFoto != null) {
-            String legenda = "🤖 *Monitoramento Automático*\n\n📌 *Termo:* " + palavraChave + "\n📰 *Fonte:* CNN Internacional";
-            sendPhotoFromUrlAsFile(urlFoto, legenda, null);
-            logger.info("Busca concluída e enviada para o Telegram.");
-        } else {
-            logger.info("Nenhuma imagem nova encontrada na CNN para o termo: {}", palavraChave);
-        }
-
-    } catch (Exception e) {
-        logger.error("Falha no fluxo automático do GitHub Actions: {}", e.getMessage());
     }
-}
 }
