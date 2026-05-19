@@ -162,6 +162,34 @@ public class TelegramService {
         return settingsService.readConfig().getOrDefault("telegram.bot.token", token);
     }
 
+    // Envia mensagem com reply_markup (JSON) — útil para botões inline
+    public void sendMessageWithReplyMarkup(String text, String destinatario, Object replyMarkup) {
+        try {
+            String url = "https://api.telegram.org/bot" + effectiveToken() + "/sendMessage";
+            java.util.Map<String, Object> body = new java.util.HashMap<>();
+            body.put("chat_id", resolveChatId(destinatario));
+            body.put("text", text);
+            body.put("parse_mode", "Markdown");
+            body.put("reply_markup", replyMarkup);
+            restTemplate.postForEntity(url, body, String.class);
+        } catch (Exception e) {
+            logger.error("Erro ao enviar mensagem com reply_markup: {}", e.getMessage());
+        }
+    }
+
+    // Responde um callback_query (para remover o spinner no cliente)
+    public void answerCallbackQuery(String callbackQueryId, String text) {
+        try {
+            String url = "https://api.telegram.org/bot" + effectiveToken() + "/answerCallbackQuery";
+            java.util.Map<String, Object> body = new java.util.HashMap<>();
+            body.put("callback_query_id", callbackQueryId);
+            if (text != null) body.put("text", text);
+            restTemplate.postForEntity(url, body, String.class);
+        } catch (Exception e) {
+            logger.error("Erro ao responder callback_query: {}", e.getMessage());
+        }
+    }
+
     // --- FLUXO AUTOMÁTICO ---
     public void executarFluxoAutomatico() {
         try {

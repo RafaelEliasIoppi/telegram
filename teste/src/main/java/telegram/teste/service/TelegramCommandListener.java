@@ -47,13 +47,23 @@ public class TelegramCommandListener {
             for (JsonNode u : results) {
                 long upd = u.path("update_id").asLong(0);
                 if (upd > lastUpdateId) lastUpdateId = upd;
+                // tratar mensagens comuns
                 JsonNode msg = u.path("message");
                 if (msg.isMissingNode()) msg = u.path("edited_message");
-                if (msg.isMissingNode()) continue;
-                String text = msg.path("text").asText("");
-                String chatId = msg.path("chat").path("id").asText("");
-                if (text == null || text.isBlank()) continue;
-                handleCommand(text.trim(), chatId);
+                if (!msg.isMissingNode()) {
+                    String text = msg.path("text").asText("");
+                    String chatId = msg.path("chat").path("id").asText("");
+                    if (text != null && !text.isBlank()) handleCommand(text.trim(), chatId);
+                }
+
+                // tratar callbacks (botões inline)
+                JsonNode callback = u.path("callback_query");
+                if (!callback.isMissingNode()) {
+                    String data = callback.path("data").asText("");
+                    String callbackId = callback.path("id").asText("");
+                    String fromChat = callback.path("message").path("chat").path("id").asText("");
+                    processCallback(data, callbackId, fromChat);
+                }
             }
         } catch (Exception e) {
             logger.debug("Erro ao poll Telegram: {}", e.getMessage());
@@ -63,10 +73,16 @@ public class TelegramCommandListener {
     private void handleCommand(String text, String chatId) {
         try {
             logger.info("Comando recebido de {}: {}", chatId, text);
+            String allowed = settingsService.readConfig().getOrDefault("telegram.chat.id", "");
+            if (allowed != null && !allowed.isBlank() && !allowed.equals(chatId)) {
+                telegramService.sendMessage("Acesso negado: este bot aceita comandos somente do chat autorizado.", chatId);
+                return;
+            }
+
             String lower = text.toLowerCase();
             if (lower.startsWith("/verificar")) {
                 defesaCivilMonitor.verificarAgora();
-                telegramService.sendMessage("🔎 Verificação executada.", chatId);
+                telegramService.sendMessage("🔎 Verificação executada com sucesso.", chatId);
                 return;
             }
             if (lower.startsWith("/candidatos")) {
@@ -90,9 +106,17 @@ public class TelegramCommandListener {
                 if (idx < 1 || idx > cands.size()) {
                     telegramService.sendMessage("Índice inválido. Use /candidatos para ver a lista.", chatId);
                 } else {
-                    String sel = cands.get(idx-1);
-                    telegramService.sendMessage(sel, chatId);
-                    telegramService.sendMessage("Candidato enviado (via comando).", chatId);
+                    // envia confirmação por botão inline
+                    String title = "Confirmar envio do candidato " + idx + "?";
+                    java.util.Map<String, Object> kb = java.util.Map.of(
+                        "inline_keyboard", List.of(
+                            List.of(
+                                java.util.Map.of("text", "Confirmar", "callback_data", "confirm_send:" + idx),
+                                java.util.Map.of("text", "Cancelar", "callback_data", "cancel_send:" + idx)
+                            )
+                        )
+                    );
+                    telegramService.sendMessageWithReplyMarkup(title + "\n\n" + cands.get(idx-1), chatId, kb);
                 }
                 return;
             }
@@ -114,11 +138,38 @@ public class TelegramCommandListener {
             String help = "Comandos disponíveis:\n" +
                           "/verificar - Executa verificação agora\n" +
                           "/candidatos - Lista candidatos detectados\n" +
-                          "/enviar N - Envia o candidato N ao chat\n" +
+                          "/enviar N - Solicita envio do candidato N (confirmação por botão)\n" +
                           "/salvar N - Salva o candidato N como último alerta";
             telegramService.sendMessage(help, chatId);
         } catch (Exception e) {
             logger.error("Erro ao lidar com comando: {}", e.getMessage());
+        }
+    }
+
+    private void processCallback(String data, String callbackId, String chatId) {
+        try {
+            if (data == null || data.isBlank()) return;
+            if (data.startsWith("confirm_send:")) {
+                String s = data.substring("confirm_send:".length());
+                int idx = 1;
+                try { idx = Integer.parseInt(s); } catch (Exception ex) { }
+                List<String> cands = defesaCivilMonitor.listarCandidatos(12);
+                if (idx < 1 || idx > cands.size()) {
+                    telegramService.answerCallbackQuery(callbackId, "Índice inválido.");
+                    return;
+                }
+                // envia para o chat configurado
+                String sel = cands.get(idx-1);
+                telegramService.sendMessage(sel, null);
+                telegramService.answerCallbackQuery(callbackId, "Enviado com sucesso.");
+                return;
+            }
+            if (data.startsWith("cancel_send:")) {
+                telegramService.answerCallbackQuery(callbackId, "Envio cancelado.");
+                return;
+            }
+        } catch (Exception e) {
+            logger.error("Erro ao processar callback: {}", e.getMessage());
         }
     }
 }
