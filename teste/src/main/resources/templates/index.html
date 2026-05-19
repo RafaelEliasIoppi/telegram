@@ -58,15 +58,11 @@
     </div>
 
     <div class="card">
-        <h2>🛰️ Monitor Defesa Civil</h2>
-        <form action="/defesacivil/salvar-config" method="post">
-            <label style="display:block;margin-bottom:6px;"><input type="checkbox" name="enabled" th:checked="${monitorEnabled == 'true'}"> Ativar monitoramento automático</label>
-            <label style="display:block;margin-top:8px;">Palavras-chave (vírgula separado):</label>
-            <input type="text" name="keywords" th:value="${monitorKeywords}">
-            <label style="display:block;margin-top:8px;">Intervalo (minutos):</label>
-            <input type="number" name="intervalMinutes" min="1" max="1440" th:value="${monitorIntervalMinutes}">
-            <button type="submit" style="margin-top:8px;background:#0066cc">Salvar Monitor</button>
-        </form>
+        <h2>🛰️ Monitor Defesa Civil (configurações via .env)</h2>
+        <p><strong>Ativado:</strong> <span th:text="${monitorEnabled}">false</span></p>
+        <p><strong>Palavras-chave:</strong> <span th:text="${monitorKeywords}">alerta,aviso</span></p>
+        <p><strong>Intervalo (min):</strong> <span th:text="${monitorIntervalMinutes}">10</span></p>
+        <p style="font-size:90%;color:#666;margin-top:8px;">Para alterar, edite o arquivo <em>.env</em> e reinicie a aplicação.</p>
     </div>
 
     <div class="card">

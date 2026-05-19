@@ -69,4 +69,5 @@ public class SettingsService {
             logger.error("Falha ao salvar configurações: {}", e.getMessage());
         }
     }
+
 }
