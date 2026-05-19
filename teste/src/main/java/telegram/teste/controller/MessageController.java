@@ -46,14 +46,7 @@ public class MessageController {
         return "index";
     }
 
-    @PostMapping("/salvar-config")
-    public String salvarConfig(@RequestParam(required = false) String token,
-                               @RequestParam(required = false) String chatId,
-                               Model model) {
-        settingsService.saveConfig(token, chatId);
-        model.addAttribute("mensagem", "Configurações salvas com sucesso!");
-        return index(model);
-    }
+    // Removida a rota que permitia salvar token/chat via UI por motivos de segurança.
 
     @PostMapping("/salvar-ultima")
     public String salvarUltima(@RequestParam String ultima, Model model) {
