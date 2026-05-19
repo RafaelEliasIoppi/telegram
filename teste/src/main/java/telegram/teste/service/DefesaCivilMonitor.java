@@ -55,6 +55,73 @@ public class DefesaCivilMonitor {
         verificarAlertas();
     }
 
+    // Retorna uma lista de candidatos encontrados na página (não grava/nenhuma ação)
+    public java.util.List<String> listarCandidatos(int limit) {
+        java.util.List<String> out = new java.util.ArrayList<>();
+        try {
+            String url = settingsService.readConfig().getOrDefault("defesacivil.url", "https://www.defesacivil.rs.gov.br/");
+            Document doc = Jsoup.connect(url).userAgent("Mozilla/5.0").timeout(15000).get();
+
+            // 1) tentar feed
+            String feedUrl = findRssLink(doc, url);
+            if (feedUrl != null) {
+                try {
+                    Document feed = Jsoup.connect(feedUrl).userAgent("Mozilla/5.0").ignoreContentType(true).timeout(10000).get();
+                    for (org.jsoup.nodes.Element item : feed.select("item, entry")) {
+                        String title = item.selectFirst("title") != null ? item.selectFirst("title").text() : null;
+                        String link = "";
+                        if (item.selectFirst("link") != null) link = item.selectFirst("link").text();
+                        if (link.isBlank() && item.selectFirst("link[href]") != null) link = item.selectFirst("link[href]").attr("href");
+                        String v = (title == null ? "(sem título)" : title) + (link.isBlank() ? "" : "\n" + link);
+                        out.add(v);
+                        if (out.size() >= limit) return out;
+                    }
+                } catch (Exception e) {
+                    // ignora
+                }
+            }
+
+            // 2) headlines
+            for (int i = 1; i <= 3 && out.size() < limit; i++) {
+                for (org.jsoup.nodes.Element h : doc.select("h" + i)) {
+                    String cand = extractTitleAndLink(h);
+                    if (cand != null) {
+                        out.add(cand);
+                        if (out.size() >= limit) return out;
+                    }
+                }
+            }
+
+            // 3) keywords
+            String kwConf = settingsService.readConfig().getOrDefault("defesacivil.keywords", "alerta,aviso,atenção,emergência,bol");
+            String[] keywords = kwConf.split("\\s*,\\s*");
+            for (String kw : keywords) {
+                org.jsoup.select.Elements matches = doc.getElementsContainingOwnText(kw);
+                for (org.jsoup.nodes.Element el : matches) {
+                    String cand = extractTitleAndLink(el);
+                    if (cand != null) {
+                        if (!out.contains(cand)) out.add(cand);
+                        if (out.size() >= limit) return out;
+                    }
+                }
+            }
+
+            // 4) fallback: some paragraphs
+            for (org.jsoup.nodes.Element p : doc.select("p")) {
+                String txt = p.text();
+                if (txt != null && txt.length() > 40) {
+                    String snippet = txt.length() > 300 ? txt.substring(0, 300) + "..." : txt;
+                    out.add(snippet);
+                    if (out.size() >= limit) return out;
+                }
+            }
+
+        } catch (Exception e) {
+            logger.debug("Erro listarCandidatos: {}", e.getMessage());
+        }
+        return out;
+    }
+
     private String coletarConteudoSite() {
         try {
             String url = settingsService.readConfig().getOrDefault("defesacivil.url", "https://www.defesacivil.rs.gov.br/");
