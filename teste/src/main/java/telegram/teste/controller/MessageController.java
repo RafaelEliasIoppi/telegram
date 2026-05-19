@@ -30,6 +30,11 @@ public class MessageController {
         model.addAttribute("configChatId", cfg.getOrDefault("telegram.chat.id", ""));
         String ultima = telegramService.lerUltimaPalavraSalva();
         model.addAttribute("ultimaPalavra", ultima);
+        // Monitor settings
+        model.addAttribute("monitorEnabled", cfg.getOrDefault("defesacivil.enabled", "false"));
+        model.addAttribute("monitorKeywords", cfg.getOrDefault("defesacivil.keywords", "alerta,aviso,emergência"));
+        String rate = cfg.getOrDefault("defesacivil.fixedRate", "600000");
+        try { model.addAttribute("monitorIntervalMinutes", String.valueOf(Integer.parseInt(rate)/60000)); } catch (Exception ex) { model.addAttribute("monitorIntervalMinutes", "10"); }
         // Mascara parcial do token para exibição
         String t = cfg.getOrDefault("telegram.bot.token", "");
         String masked = "";
@@ -175,5 +180,23 @@ public String executarBuscaAutomatica(Model model) {
             model.addAttribute("mensagem", "Erro ao executar verificação: " + e.getMessage());
         }
         return verAlertas(model);
+    }
+
+    @PostMapping("/defesacivil/salvar-config")
+    public String salvarDefesaCivilConfig(@RequestParam(required = false) String enabled,
+                                          @RequestParam(required = false) String keywords,
+                                          @RequestParam(required = false) Integer intervalMinutes,
+                                          Model model) {
+        try {
+            java.util.Map<String,String> updates = new java.util.HashMap<>();
+            updates.put("defesacivil.enabled", (enabled != null && enabled.equals("on")) ? "true" : "false");
+            if (keywords != null) updates.put("defesacivil.keywords", keywords.trim());
+            if (intervalMinutes != null) updates.put("defesacivil.fixedRate", String.valueOf(intervalMinutes * 60 * 1000));
+            settingsService.saveSettings(updates);
+            model.addAttribute("mensagem", "Configurações do monitor salvas.");
+        } catch (Exception e) {
+            model.addAttribute("mensagem", "Erro ao salvar configurações: " + e.getMessage());
+        }
+        return index(model);
     }
 }
