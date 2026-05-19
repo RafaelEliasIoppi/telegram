@@ -40,14 +40,7 @@
         </form>
     </div>
 
-    <div class="card">
-        <h2>⚙️ Configurações</h2>
-        <form action="/salvar-config" method="post">
-            <input type="text" name="token" placeholder="telegram.bot.token" th:value="${configToken}">
-            <input type="text" name="chatId" placeholder="telegram.chat.id" th:value="${configChatId}">
-            <button type="submit">Salvar Configuração</button>
-        </form>
-    </div>
+    <!-- Configuração via .env — não exibimos o formulário para o usuário -->
 
     <div class="card">
         <h2>🔁 Automático / Histórico</h2>
@@ -62,6 +55,18 @@
             <button type="submit" style="background:#ff8800">Verificar Defesa Civil Agora</button>
         </form>
         <p style="margin-top:8px;text-align:center;"><a href="/defesacivil" style="color:#0066cc;text-decoration:none;">Ver últimos alertas da Defesa Civil</a></p>
+    </div>
+
+    <div class="card">
+        <h2>🛰️ Monitor Defesa Civil</h2>
+        <form action="/defesacivil/salvar-config" method="post">
+            <label style="display:block;margin-bottom:6px;"><input type="checkbox" name="enabled" th:checked="${monitorEnabled == 'true'}"> Ativar monitoramento automático</label>
+            <label style="display:block;margin-top:8px;">Palavras-chave (vírgula separado):</label>
+            <input type="text" name="keywords" th:value="${monitorKeywords}">
+            <label style="display:block;margin-top:8px;">Intervalo (minutos):</label>
+            <input type="number" name="intervalMinutes" min="1" max="1440" th:value="${monitorIntervalMinutes}">
+            <button type="submit" style="margin-top:8px;background:#0066cc">Salvar Monitor</button>
+        </form>
     </div>
 
     <div class="card">

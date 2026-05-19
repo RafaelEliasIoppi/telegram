@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class SettingsService {
     private static final Logger logger = LoggerFactory.getLogger(SettingsService.class);
-    private final Path CONFIG_PATH = Paths.get(".env.user");
+    private final Path CONFIG_PATH = Paths.get(".env");
 
     public Map<String, String> readConfig() {
         Map<String, String> map = new HashMap<>();
@@ -33,6 +33,13 @@ public class SettingsService {
                 logger.error("Não foi possível ler arquivo de configuração: {}", e.getMessage());
             }
         }
+        // Compatibilidade: se variáveis em estilo SHELL estiverem presentes, mapeie para as chaves usadas pela aplicação
+        if (map.containsKey("TELEGRAM_BOT_TOKEN") && !map.containsKey("telegram.bot.token")) {
+            map.put("telegram.bot.token", map.get("TELEGRAM_BOT_TOKEN"));
+        }
+        if (map.containsKey("TELEGRAM_CHAT_ID") && !map.containsKey("telegram.chat.id")) {
+            map.put("telegram.chat.id", map.get("TELEGRAM_CHAT_ID"));
+        }
         return map;
     }
 
@@ -45,6 +52,21 @@ public class SettingsService {
             logger.info("Configurações salvas em {}", CONFIG_PATH.toAbsolutePath());
         } catch (IOException e) {
             logger.error("Falha ao salvar config: {}", e.getMessage());
+        }
+    }
+
+    public void saveSettings(Map<String, String> updates) {
+        try {
+            Map<String, String> cfg = readConfig();
+            cfg.putAll(updates);
+            StringBuilder sb = new StringBuilder();
+            for (Map.Entry<String, String> e : cfg.entrySet()) {
+                sb.append(e.getKey()).append("=").append(e.getValue()).append("\n");
+            }
+            Files.writeString(CONFIG_PATH, sb.toString(), StandardCharsets.UTF_8);
+            logger.info("Configurações atualizadas em {}", CONFIG_PATH.toAbsolutePath());
+        } catch (IOException e) {
+            logger.error("Falha ao salvar configurações: {}", e.getMessage());
         }
     }
 }
