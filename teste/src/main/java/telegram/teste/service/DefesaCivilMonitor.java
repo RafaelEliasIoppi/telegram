@@ -122,6 +122,10 @@ public class DefesaCivilMonitor {
         return out;
     }
 
+    public void salvarAlerta(String txt) {
+        writeLast(txt);
+    }
+
     private String coletarConteudoSite() {
         try {
             String url = settingsService.readConfig().getOrDefault("defesacivil.url", "https://www.defesacivil.rs.gov.br/");

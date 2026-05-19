@@ -182,6 +182,35 @@ public String executarBuscaAutomatica(Model model) {
         return verAlertas(model);
     }
 
+    @org.springframework.web.bind.annotation.GetMapping("/defesacivil/candidatos")
+    public String verCandidatos(Model model) {
+        java.util.List<String> candidatos = defesaCivilMonitor.listarCandidatos(12);
+        model.addAttribute("candidatos", candidatos);
+        return "defesacivil_candidates";
+    }
+
+    @PostMapping("/defesacivil/enviar-candidato")
+    public String enviarCandidato(@RequestParam String candidato, Model model) {
+        try {
+            telegramService.sendMessage(candidato, null);
+            model.addAttribute("mensagem", "Candidato enviado ao Telegram com sucesso.");
+        } catch (Exception e) {
+            model.addAttribute("mensagem", "Erro ao enviar candidato: " + e.getMessage());
+        }
+        return verCandidatos(model);
+    }
+
+    @PostMapping("/defesacivil/salvar-candidato")
+    public String salvarCandidato(@RequestParam String candidato, Model model) {
+        try {
+            defesaCivilMonitor.salvarAlerta(candidato);
+            model.addAttribute("mensagem", "Candidato salvo como último alerta.");
+        } catch (Exception e) {
+            model.addAttribute("mensagem", "Erro ao salvar candidato: " + e.getMessage());
+        }
+        return verCandidatos(model);
+    }
+
     @PostMapping("/defesacivil/salvar-config")
     public String salvarDefesaCivilConfig(@RequestParam(required = false) String enabled,
                                           @RequestParam(required = false) String keywords,
