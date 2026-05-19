@@ -2,6 +2,7 @@ package telegram.teste.service;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Arrays;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -74,9 +75,12 @@ public class TelegramCommandListener {
         try {
             logger.info("Comando recebido de {}: {}", chatId, text);
             String allowed = settingsService.readConfig().getOrDefault("telegram.chat.id", "");
-            if (allowed != null && !allowed.isBlank() && !allowed.equals(chatId)) {
-                telegramService.sendMessage("Acesso negado: este bot aceita comandos somente do chat autorizado.", chatId);
-                return;
+            if (allowed != null && !allowed.isBlank()) {
+                String[] allowedIds = allowed.split("\\s*,\\s*");
+                if (!Arrays.asList(allowedIds).contains(chatId)) {
+                    telegramService.sendMessage("Acesso negado: apenas chats autorizados podem usar estes comandos.", chatId);
+                    return;
+                }
             }
 
             String lower = text.toLowerCase();
@@ -106,17 +110,17 @@ public class TelegramCommandListener {
                 if (idx < 1 || idx > cands.size()) {
                     telegramService.sendMessage("Índice inválido. Use /candidatos para ver a lista.", chatId);
                 } else {
-                    // envia confirmação por botão inline
-                    String title = "Confirmar envio do candidato " + idx + "?";
-                    java.util.Map<String, Object> kb = java.util.Map.of(
-                        "inline_keyboard", List.of(
-                            List.of(
-                                java.util.Map.of("text", "Confirmar", "callback_data", "confirm_send:" + idx),
-                                java.util.Map.of("text", "Cancelar", "callback_data", "cancel_send:" + idx)
+                        // envia confirmação por botão inline
+                        String title = "Confirmar envio do candidato " + idx + "?";
+                        java.util.Map<String, Object> kb = java.util.Map.of(
+                            "inline_keyboard", List.of(
+                                List.of(
+                                    java.util.Map.of("text", "Enviar agora", "callback_data", "confirm_send:" + idx),
+                                    java.util.Map.of("text", "Cancelar envio", "callback_data", "cancel_send:" + idx)
+                                )
                             )
-                        )
-                    );
-                    telegramService.sendMessageWithReplyMarkup(title + "\n\n" + cands.get(idx-1), chatId, kb);
+                        );
+                        telegramService.sendMessageWithReplyMarkup(title + "\n\n" + cands.get(idx-1), chatId, kb);
                 }
                 return;
             }
@@ -161,7 +165,7 @@ public class TelegramCommandListener {
                 // envia para o chat configurado
                 String sel = cands.get(idx-1);
                 telegramService.sendMessage(sel, null);
-                telegramService.answerCallbackQuery(callbackId, "Enviado com sucesso.");
+                telegramService.answerCallbackQuery(callbackId, "Enviado com sucesso ao chat configurado.");
                 return;
             }
             if (data.startsWith("cancel_send:")) {
