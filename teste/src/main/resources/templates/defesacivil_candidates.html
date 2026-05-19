@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Candidatos - Defesa Civil</title>
+    <style>
+        body{font-family:sans-serif;background:#f6f8fb;padding:20px}
+        .card{background:white;padding:16px;border-radius:8px;max-width:900px;margin:16px auto;box-shadow:0 2px 6px rgba(0,0,0,.08)}
+        .cand{border-bottom:1px solid #eee;padding:8px 0}
+        .actions{margin-top:8px}
+        button{padding:6px 10px;border-radius:6px;border:none;background:#0088cc;color:#fff;cursor:pointer}
+        button.secondary{background:#666}
+        pre{white-space:pre-wrap}
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>🔎 Candidatos encontrados</h2>
+        <p th:if="${candidatos == null || #lists.isEmpty(candidatos)}">Nenhum candidato encontrado.</p>
+        <div th:if="${candidatos != null}">
+            <div th:each="cand, idx : ${candidatos}" class="cand">
+                <strong th:text="${idx.index + 1} + '. '"></strong>
+                <pre th:text="${cand}"></pre>
+                <div class="actions">
+                    <form th:action="@{/defesacivil/enviar-candidato}" method="post" style="display:inline">
+                        <input type="hidden" name="candidato" th:value="${cand}">
+                        <button type="submit">Enviar ao Telegram</button>
+                    </form>
+                    <form th:action="@{/defesacivil/salvar-candidato}" method="post" style="display:inline;margin-left:8px;">
+                        <input type="hidden" name="candidato" th:value="${cand}">
+                        <button type="submit" class="secondary">Salvar como último</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <p style="margin-top:12px;"><a href="/" style="color:#0066cc;text-decoration:none;">&larr; Voltar</a></p>
+        <p class="status" th:text="${mensagem}"></p>
+    </div>
+</body>
+</html>
