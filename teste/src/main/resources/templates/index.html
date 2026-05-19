@@ -40,6 +40,38 @@
         </form>
     </div>
 
+    <div class="card">
+        <h2>⚙️ Configurações</h2>
+        <form action="/salvar-config" method="post">
+            <input type="text" name="token" placeholder="telegram.bot.token" th:value="${configToken}">
+            <input type="text" name="chatId" placeholder="telegram.chat.id" th:value="${configChatId}">
+            <button type="submit">Salvar Configuração</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>🔁 Automático / Histórico</h2>
+        <form action="/salvar-ultima" method="post">
+            <input type="text" name="ultima" placeholder="Salvar última palavra" th:value="${ultimaPalavra}">
+            <button type="submit">Salvar Última Palavra</button>
+        </form>
+        <form action="/executar-busca-automatica" method="post" style="margin-top:10px;">
+            <button type="submit">Executar Busca Automática Agora</button>
+        </form>
+        <form action="/defesacivil/verificar-agora" method="post" style="margin-top:10px;">
+            <button type="submit" style="background:#ff8800">Verificar Defesa Civil Agora</button>
+        </form>
+        <p style="margin-top:8px;text-align:center;"><a href="/defesacivil" style="color:#0066cc;text-decoration:none;">Ver últimos alertas da Defesa Civil</a></p>
+    </div>
+
+    <div class="card">
+        <h2>🔧 Teste</h2>
+        <p>Token atual: <strong th:text="${maskedToken}">-</strong></p>
+        <form action="/enviar-teste" method="post">
+            <button type="submit">Enviar Mensagem de Teste</button>
+        </form>
+    </div>
+
     <p class="status" th:text="${mensagem}"></p>
 </body>
 </html>

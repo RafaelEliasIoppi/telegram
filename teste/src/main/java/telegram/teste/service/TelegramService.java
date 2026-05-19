@@ -14,6 +14,7 @@ import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -31,8 +32,11 @@ public class TelegramService {
     private static final Logger logger = LoggerFactory.getLogger(TelegramService.class);
     private final RestTemplate restTemplate = new RestTemplate();
 
-    @Value("${telegram.bot.token}") private String token;
-    @Value("${telegram.chat.id}") private String defaultChatId;
+    @Value("${telegram.bot.token:}") private String token;
+    @Value("${telegram.chat.id:}") private String defaultChatId;
+
+    @Autowired
+    private SettingsService settingsService;
 
     // Caminho relativo para funcionar tanto no Codespace quanto no GitHub Actions
     private final String FILE_PATH = "teste/ultimo_assunto.txt";
@@ -66,7 +70,7 @@ public class TelegramService {
 
     // --- ENVIO TELEGRAM ---
     public void sendMessage(String text, String destinatario) {
-        String url = "https://api.telegram.org/bot" + token + "/sendMessage";
+        String url = "https://api.telegram.org/bot" + effectiveToken() + "/sendMessage";
         Map<String, String> body = Map.of("chat_id", resolveChatId(destinatario), "text", text, "parse_mode", "Markdown");
         restTemplate.postForEntity(url, body, String.class);
     }
@@ -96,7 +100,7 @@ public class TelegramService {
     }
 
     private void enviarParaTelegram(byte[] bytes, String fileName, String caption, String dest) {
-        String url = "https://api.telegram.org/bot" + token + "/sendPhoto";
+        String url = "https://api.telegram.org/bot" + effectiveToken() + "/sendPhoto";
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
 
@@ -150,7 +154,12 @@ public class TelegramService {
     }
 
     private String resolveChatId(String dest) {
-        return (dest == null || dest.isBlank()) ? defaultChatId : dest;
+        String configured = settingsService.readConfig().getOrDefault("telegram.chat.id", defaultChatId);
+        return (dest == null || dest.isBlank()) ? configured : dest;
+    }
+
+    private String effectiveToken() {
+        return settingsService.readConfig().getOrDefault("telegram.bot.token", token);
     }
 
     // --- FLUXO AUTOMÁTICO ---

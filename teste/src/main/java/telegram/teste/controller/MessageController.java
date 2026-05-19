@@ -8,12 +8,74 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 
 import telegram.teste.service.TelegramService;
+import telegram.teste.service.SettingsService;
+import telegram.teste.service.DefesaCivilMonitor;
 
 @Controller
 public class MessageController {
 
     @Autowired
     private TelegramService telegramService;
+
+    @Autowired
+    private SettingsService settingsService;
+
+    @Autowired
+    private DefesaCivilMonitor defesaCivilMonitor;
+
+    @org.springframework.web.bind.annotation.GetMapping("/")
+    public String index(Model model) {
+        var cfg = settingsService.readConfig();
+        model.addAttribute("configToken", cfg.getOrDefault("telegram.bot.token", ""));
+        model.addAttribute("configChatId", cfg.getOrDefault("telegram.chat.id", ""));
+        String ultima = telegramService.lerUltimaPalavraSalva();
+        model.addAttribute("ultimaPalavra", ultima);
+        // Mascara parcial do token para exibição
+        String t = cfg.getOrDefault("telegram.bot.token", "");
+        String masked = "";
+        if (t != null && !t.isBlank()) {
+            if (t.length() > 8) masked = t.substring(0,4) + "..." + t.substring(t.length()-4);
+            else masked = t.substring(0, Math.min(4, t.length())) + "...";
+        }
+        model.addAttribute("maskedToken", masked);
+        return "index";
+    }
+
+    @PostMapping("/salvar-config")
+    public String salvarConfig(@RequestParam(required = false) String token,
+                               @RequestParam(required = false) String chatId,
+                               Model model) {
+        settingsService.saveConfig(token, chatId);
+        model.addAttribute("mensagem", "Configurações salvas com sucesso!");
+        return index(model);
+    }
+
+    @PostMapping("/salvar-ultima")
+    public String salvarUltima(@RequestParam String ultima, Model model) {
+        telegramService.salvarPalavraNoArquivo(ultima);
+        model.addAttribute("mensagem", "Última palavra salva.");
+        return index(model);
+    }
+
+    @PostMapping("/enviar-teste")
+    public String enviarTeste(Model model) {
+        var cfg = settingsService.readConfig();
+        String token = cfg.get("telegram.bot.token");
+        String chatId = cfg.get("telegram.chat.id");
+        if (token == null || token.isBlank() || chatId == null || chatId.isBlank()) {
+            model.addAttribute("mensagem", "Erro: token ou chat_id não configurados. Salve as configurações primeiro.");
+            return index(model);
+        }
+
+        try {
+            String texto = "🧪 Mensagem de teste enviada pelo usuário via UI.";
+            telegramService.sendMessage(texto, null);
+            model.addAttribute("mensagem", "Mensagem de teste enviada com sucesso!");
+        } catch (Exception e) {
+            model.addAttribute("mensagem", "Erro ao enviar mensagem de teste: " + e.getMessage());
+        }
+        return index(model);
+    }
 
     @PostMapping("/enviar")
     public String enviarMensagem(@RequestParam String titulo, @RequestParam String conteudo,
@@ -89,4 +151,29 @@ public String executarBuscaAutomatica(Model model) {
     }
     return "index";
 }
+
+    @org.springframework.web.bind.annotation.GetMapping("/defesacivil")
+    public String verAlertas(Model model) {
+        // lê último alerta gravado pelo monitor
+        String alerta = "";
+        try {
+            java.nio.file.Path p = java.nio.file.Paths.get("teste/defesacivil_last.txt");
+            if (java.nio.file.Files.exists(p)) alerta = java.nio.file.Files.readString(p);
+        } catch (Exception e) {
+            // ignora
+        }
+        model.addAttribute("alerta", alerta == null ? "" : alerta.trim());
+        return "defesacivil";
+    }
+
+    @PostMapping("/defesacivil/verificar-agora")
+    public String verificarDefesaCivilAgora(Model model) {
+        try {
+            defesaCivilMonitor.verificarAgora();
+            model.addAttribute("mensagem", "Verificação da Defesa Civil executada. Consulte a página de alertas.");
+        } catch (Exception e) {
+            model.addAttribute("mensagem", "Erro ao executar verificação: " + e.getMessage());
+        }
+        return verAlertas(model);
+    }
 }
