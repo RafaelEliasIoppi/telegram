@@ -92,9 +92,23 @@
                 </li>
                 <li class="nav-item">
                     <a class="nav-link"
+                       th:classappend="${#strings.startsWith(uri,'/filtros')} ? 'active' : ''"
+                       th:href="@{/filtros}">
+                        <i class="bi bi-funnel"></i> Filtros
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link"
                        th:classappend="${#strings.startsWith(uri,'/bot')} ? 'active' : ''"
                        th:href="@{/bot}">
                         <i class="bi bi-gear"></i> Bot
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link"
+                       th:classappend="${#strings.startsWith(uri,'/ajuda')} ? 'active' : ''"
+                       th:href="@{/ajuda}">
+                        <i class="bi bi-question-circle"></i> Ajuda
                     </a>
                 </li>
             </ul>

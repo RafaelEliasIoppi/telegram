@@ -21,5 +21,6 @@ COPY --from=build /app/target/*.jar /app/app.jar
 
 EXPOSE 3000
 ENV SPRING_PROFILES_ACTIVE=prod
+ENV TZ=America/Sao_Paulo
 
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+ENTRYPOINT ["java", "-Duser.timezone=America/Sao_Paulo", "-jar", "/app/app.jar"]

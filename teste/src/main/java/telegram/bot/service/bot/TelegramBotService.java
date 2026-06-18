@@ -91,6 +91,26 @@ public class TelegramBotService {
     }
 
     /**
+     * Envia uma foto com legenda em Markdown.
+     *
+     * @param chatId   identificador do chat
+     * @param photoUrl URL pública da imagem (jpg/png/webp)
+     * @param caption  legenda Markdown (pode ser {@code null})
+     */
+    public void enviarFotoMarkdown(long chatId, String photoUrl, String caption) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("chat_id", chatId);
+        body.put("photo", photoUrl);
+        if (caption != null && !caption.isBlank()) {
+            // Telegram limita caption a 1024 chars
+            String cap = caption.length() > 1024 ? caption.substring(0, 1020) + "..." : caption;
+            body.put("caption", cap);
+            body.put("parse_mode", "Markdown");
+        }
+        post("sendPhoto", body);
+    }
+
+    /**
      * Envia uma mensagem com botões inline.
      *
      * <p>Cada elemento da lista externa representa uma linha de botões; cada

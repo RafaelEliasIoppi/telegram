@@ -10,7 +10,9 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 
 import telegram.bot.domain.ChatConfig;
+import telegram.bot.domain.FiltroAssunto;
 import telegram.bot.repository.ChatConfigRepository;
+import telegram.bot.repository.FiltroAssuntoRepository;
 
 @Component
 public class DataInitializer implements ApplicationRunner {
@@ -18,16 +20,27 @@ public class DataInitializer implements ApplicationRunner {
     private static final Logger log = LoggerFactory.getLogger(DataInitializer.class);
 
     private final ChatConfigRepository chatConfigRepo;
+    private final FiltroAssuntoRepository filtroRepo;
 
     @Value("${telegram.chat.ids:${telegram.chat.id:0}}")
     private String chatIds;
 
-    public DataInitializer(ChatConfigRepository chatConfigRepo) {
+    @Value("${gmail.subject.filter:}")
+    private String defaultSubjectFilter;
+
+    public DataInitializer(ChatConfigRepository chatConfigRepo,
+                           FiltroAssuntoRepository filtroRepo) {
         this.chatConfigRepo = chatConfigRepo;
+        this.filtroRepo = filtroRepo;
     }
 
     @Override
     public void run(ApplicationArguments args) {
+        seedChats();
+        seedFiltroPadrao();
+    }
+
+    private void seedChats() {
         if (chatIds == null || chatIds.isBlank() || chatIds.equals("0")) return;
 
         for (String idStr : chatIds.split(",")) {
@@ -51,5 +64,18 @@ public class DataInitializer implements ApplicationRunner {
                 log.warn("Chat ID inválido no .env: '{}'", idStr);
             }
         }
+    }
+
+    private void seedFiltroPadrao() {
+        if (filtroRepo.count() > 0) return;
+        if (defaultSubjectFilter == null || defaultSubjectFilter.isBlank()) return;
+        FiltroAssunto seed = FiltroAssunto.builder()
+                .nome("Urgência Renal (padrão)")
+                .padrao(defaultSubjectFilter)
+                .ativo(true)
+                .dataCadastro(LocalDateTime.now())
+                .build();
+        filtroRepo.save(seed);
+        log.info("Filtro de assunto padrão criado: '{}'", defaultSubjectFilter);
     }
 }

@@ -5,9 +5,25 @@
 
 <div th:fragment="content">
 
-    <h1 class="mb-4">
+    <h1 class="mb-2">
         <i class="bi bi-chat-dots"></i> Chats Cadastrados
     </h1>
+    <p class="text-muted mb-4">
+        Cada chat é um destinatário do Telegram (pessoa ou grupo). Você define o
+        <strong>nível mínimo</strong> que ele aceita e <strong>quais fontes</strong>
+        ele recebe — vazio significa todas.
+    </p>
+
+    <div class="card mb-4 border-info">
+        <div class="card-body">
+            <h6 class="card-title text-info"><i class="bi bi-info-circle"></i> Onde acho o Chat ID?</h6>
+            <ul class="mb-0 small">
+                <li>Inicie uma conversa com seu bot (mande <code>/start</code>) — sem isso o Telegram não permite envio.</li>
+                <li>Pra grupo: adicione o bot, mande qualquer mensagem, e use <code>@userinfobot</code> ou abra <code>https://api.telegram.org/bot&lt;TOKEN&gt;/getUpdates</code>.</li>
+                <li>O ID é um número (pode ser negativo no caso de grupo).</li>
+            </ul>
+        </div>
+    </div>
 
     <div th:if="${sucesso}" class="alert alert-success alert-dismissible fade show" role="alert">
         <i class="bi bi-check-circle"></i> <span th:text="${sucesso}"></span>
@@ -119,19 +135,23 @@
                 </div>
 
                 <div class="col-md-8">
-                    <label class="form-label d-block">Fontes Ativas</label>
+                    <label class="form-label d-block">Fontes que este chat recebe</label>
                     <small class="text-muted d-block mb-2">
-                        Se nenhuma for selecionada, todas serão consideradas.
+                        Marque uma ou mais. <strong>Nenhuma marcada = todas.</strong>
+                        Inclui as fontes nativas e as customizadas cadastradas em
+                        <a th:href="@{/fontes}">/fontes</a>.
                     </small>
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="checkbox"
-                               id="fonteDefesa" name="fontesAtivasList" value="DEFESA_CIVIL_RS">
-                        <label class="form-check-label" for="fonteDefesa">DEFESA_CIVIL_RS</label>
+                    <div th:if="${#lists.isEmpty(fontesDisponiveis)}" class="text-muted small">
+                        Nenhuma fonte disponível.
                     </div>
-                    <div class="form-check form-check-inline">
+                    <div th:each="fd, st : ${fontesDisponiveis}" class="form-check form-check-inline">
                         <input class="form-check-input" type="checkbox"
-                               id="fonteInmet" name="fontesAtivasList" value="INMET">
-                        <label class="form-check-label" for="fonteInmet">INMET</label>
+                               th:id="'fonte_' + ${st.index}"
+                               name="fontesAtivasList"
+                               th:value="${fd.codigo}">
+                        <label class="form-check-label" th:for="'fonte_' + ${st.index}"
+                               th:text="${fd.nome}">Fonte</label>
+                        <small class="text-muted ms-1" th:text="'(' + ${fd.codigo} + ')'">(CODIGO)</small>
                     </div>
                 </div>
 

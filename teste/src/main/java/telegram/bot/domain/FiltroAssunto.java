@@ -14,47 +14,39 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Filtro de assunto de e-mail a ser monitorado pelo Gmail.
+ * Cada linha ativa adiciona um padrão de subject que, se contido no
+ * assunto de um e-mail novo (busca tolerante a acentos/caixa), gera
+ * um alerta no Telegram.
+ */
 @Entity
-@Table(name = "alertas")
+@Table(name = "filtros_assunto")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Alerta {
+public class FiltroAssunto {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private String titulo;
+    @Column(nullable = false, length = 120)
+    private String nome;
 
-    @Column(length = 4000)
-    private String conteudo;
-
-    @Column(nullable = false)
-    private String fonte;
+    @Column(nullable = false, length = 500)
+    private String padrao;
 
     @Column(nullable = false)
-    private String nivel;
+    private boolean ativo;
 
-    @Column(nullable = false)
-    private LocalDateTime dataHora;
-
-    @Column(nullable = false)
-    private boolean enviado;
-
-    @Column(unique = true)
-    private String hashConteudo;
-
-    /** URL opcional de imagem (ex.: mapa, foto) anexada ao alerta. */
-    @Column(length = 1000)
-    private String imagemUrl;
+    private LocalDateTime dataCadastro;
 
     @PrePersist
     public void prePersist() {
-        if (dataHora == null) {
-            dataHora = LocalDateTime.now();
+        if (dataCadastro == null) {
+            dataCadastro = LocalDateTime.now();
         }
     }
 }

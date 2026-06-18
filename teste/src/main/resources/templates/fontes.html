@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{::content})}">
+<body>
+
+<div th:fragment="content">
+
+    <h1 class="mb-2">
+        <i class="bi bi-broadcast"></i> Fontes de Monitoramento
+    </h1>
+    <p class="text-muted mb-4">
+        Cadastre <strong>qualquer site ou feed RSS</strong> que você quer monitorar.
+        O bot vai conferir periodicamente, procurar palavras-chave e te alertar pelo Telegram.
+    </p>
+
+    <!-- Como funciona -->
+    <div class="card mb-4 border-info">
+        <div class="card-body">
+            <h6 class="card-title text-info">
+                <i class="bi bi-info-circle"></i> Como funciona
+            </h6>
+            <ul class="mb-0 small">
+                <li>Escolha <strong>URL</strong> (página HTML comum) ou <strong>RSS</strong> (feed XML — termina em <code>.xml</code> ou <code>/rss</code>).</li>
+                <li>Cole a URL completa começando com <code>http://</code> ou <code>https://</code>.</li>
+                <li>Liste <strong>palavras-chave</strong> separadas por vírgula. Só vira alerta o item que contiver pelo menos uma delas (busca <em>case-insensitive</em>). Deixe vazio pra receber tudo.</li>
+                <li>Para HTML, opcionalmente passe um <strong>seletor CSS</strong> (ex.: <code>.noticia</code>, <code>h2.titulo</code>) pra filtrar onde olhar. Sem seletor, o bot procura em <code>h1/h2/h3</code> e parágrafos.</li>
+                <li>Verificação automática <strong>a cada 30 min</strong>. Cada fonte gera no máximo 10 alertas por ciclo.</li>
+                <li>Os alertas aparecem no <strong>Histórico</strong> e são enviados aos <strong>Chats</strong> que aceitam o nível escolhido.</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Flash -->
+    <div th:if="${sucesso}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle"></i> <span th:text="${sucesso}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div th:if="${erro}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle"></i> <span th:text="${erro}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- Stats -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <small class="text-muted">Fontes cadastradas</small>
+                    <h3 class="mb-0" th:text="${totalFontes}">0</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <small class="text-muted">Ativas agora</small>
+                    <h3 class="mb-0 text-success" th:text="${fontesAtivas}">0</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">
+                <i class="bi bi-list-ul"></i> Suas fontes
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Tipo</th>
+                            <th>URL</th>
+                            <th>Palavras-chave</th>
+                            <th>Nível</th>
+                            <th class="text-center">Ativo</th>
+                            <th class="text-end">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:if="${#lists.isEmpty(fontes)}">
+                            <td colspan="7" class="text-center text-muted py-4">
+                                Nenhuma fonte cadastrada. Adicione abaixo.
+                            </td>
+                        </tr>
+                        <tr th:each="f : ${fontes}">
+                            <td>
+                                <strong th:text="${f.nome}">Nome</strong><br>
+                                <small class="text-muted"><code th:text="${f.codigo}">CODIGO</code></small>
+                            </td>
+                            <td>
+                                <span class="badge bg-info text-dark" th:text="${f.tipo}">URL</span>
+                            </td>
+                            <td class="truncate">
+                                <a th:href="${f.url}" target="_blank" rel="noopener" th:text="${f.url}">https://...</a>
+                            </td>
+                            <td>
+                                <small th:text="${f.palavrasChave != null and !f.palavrasChave.isEmpty()} ? ${f.palavrasChave} : 'todas'">
+                                    todas
+                                </small>
+                            </td>
+                            <td>
+                                <span class="badge"
+                                      th:classappend="'badge-' + ${f.nivel}"
+                                      th:text="${f.nivel}">INFO</span>
+                            </td>
+                            <td class="text-center">
+                                <span th:if="${f.ativo}" class="badge bg-success">
+                                    <i class="bi bi-check"></i> Sim
+                                </span>
+                                <span th:unless="${f.ativo}" class="badge bg-secondary">
+                                    <i class="bi bi-pause"></i> Pausada
+                                </span>
+                            </td>
+                            <td class="text-end">
+                                <form th:action="@{|/fontes/${f.id}/toggle|}" method="post" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                        <i th:class="${f.ativo} ? 'bi bi-pause-fill' : 'bi bi-play-fill'"></i>
+                                        <span th:text="${f.ativo} ? 'Pausar' : 'Ativar'">Pausar</span>
+                                    </button>
+                                </form>
+                                <form th:action="@{|/fontes/${f.id}/remover|}" method="post"
+                                      onsubmit="return confirm('Remover esta fonte?');"
+                                      class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-trash"></i> Remover
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulário -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">
+                <i class="bi bi-plus-circle"></i> Cadastrar nova fonte
+            </h5>
+        </div>
+        <div class="card-body">
+            <form th:action="@{/fontes}" method="post" class="row g-3">
+
+                <div class="col-md-6">
+                    <label for="nome" class="form-label">Nome <span class="text-danger">*</span></label>
+                    <input type="text" id="nome" name="nome" class="form-control"
+                           required maxlength="80" placeholder="Ex.: Boletim Saúde MG">
+                    <small class="form-text text-muted">
+                        Aparece no Telegram em <code>📡 Fonte:</code>.
+                    </small>
+                </div>
+
+                <div class="col-md-3">
+                    <label for="tipo" class="form-label">Tipo</label>
+                    <select id="tipo" name="tipo" class="form-select">
+                        <option value="URL">URL (página HTML)</option>
+                        <option value="RSS">RSS / Atom</option>
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label for="nivel" class="form-label">Nível</label>
+                    <select id="nivel" name="nivel" class="form-select">
+                        <option value="INFO">INFO (azul)</option>
+                        <option value="AVISO">AVISO (laranja)</option>
+                        <option value="CRITICO">CRITICO (vermelho)</option>
+                    </select>
+                </div>
+
+                <div class="col-12">
+                    <label for="url" class="form-label">URL <span class="text-danger">*</span></label>
+                    <input type="url" id="url" name="url" class="form-control"
+                           required maxlength="1000"
+                           placeholder="https://exemplo.gov.br/noticias.rss">
+                </div>
+
+                <div class="col-md-6">
+                    <label for="palavrasChave" class="form-label">Palavras-chave</label>
+                    <input type="text" id="palavrasChave" name="palavrasChave"
+                           class="form-control" maxlength="1000"
+                           placeholder="ex.: emergência, alerta, evacuação">
+                    <small class="form-text text-muted">
+                        Separe por vírgula. Vazio = tudo vira alerta.
+                    </small>
+                </div>
+
+                <div class="col-md-6">
+                    <label for="seletor" class="form-label">Seletor CSS <small class="text-muted">(opcional, só pra HTML)</small></label>
+                    <input type="text" id="seletor" name="seletor" class="form-control"
+                           maxlength="500" placeholder="ex.: .noticia, h2.titulo">
+                    <small class="form-text text-muted">
+                        Sem isto, o bot olha em <code>h1/h2/h3</code> e parágrafos.
+                    </small>
+                </div>
+
+                <div class="col-12">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="ativo" name="ativo" value="true" checked>
+                        <label class="form-check-label" for="ativo">Ativar imediatamente</label>
+                    </div>
+                </div>
+
+                <div class="col-12 text-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-plus-lg"></i> Cadastrar fonte
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Exemplos -->
+    <div class="card mt-4 border-secondary">
+        <div class="card-body">
+            <h6 class="card-title"><i class="bi bi-stars"></i> Exemplos prontos</h6>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>O que monitorar</th>
+                            <th>Tipo</th>
+                            <th>URL</th>
+                            <th>Palavras-chave</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Boletim epidemiológico</td>
+                            <td>URL</td>
+                            <td><code>https://www.gov.br/saude/pt-br/assuntos/saude-de-a-a-z</code></td>
+                            <td><code>surto, emergência, alerta</code></td>
+                        </tr>
+                        <tr>
+                            <td>RSS de notícias da imprensa local</td>
+                            <td>RSS</td>
+                            <td><code>https://g1.globo.com/rss/g1/rs/</code></td>
+                            <td><code>hospital, transplante, doação</code></td>
+                        </tr>
+                        <tr>
+                            <td>Página do CRM/conselho profissional</td>
+                            <td>URL</td>
+                            <td><code>https://exemplo-cfm.org.br/comunicados</code></td>
+                            <td><code>plantão, convocação, edital</code></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

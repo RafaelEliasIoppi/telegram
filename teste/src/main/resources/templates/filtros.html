@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{::content})}">
+<body>
+
+<div th:fragment="content">
+
+    <h1 class="mb-2">
+        <i class="bi bi-funnel"></i> Filtros de Assunto
+    </h1>
+    <p class="text-muted mb-4">
+        Cada filtro é um trecho de texto que o monitor procura no
+        <strong>assunto</strong> dos e-mails novos da sua caixa Gmail.
+        Quando um e-mail bate com pelo menos um filtro ativo, um alerta
+        formatado é enviado para todos os chats do Telegram cadastrados.
+    </p>
+
+    <!-- Como funciona -->
+    <div class="card mb-4 border-info">
+        <div class="card-body">
+            <h6 class="card-title text-info">
+                <i class="bi bi-info-circle"></i> Como funciona
+            </h6>
+            <ul class="mb-0 small">
+                <li>Você cadastra <strong>quantos filtros quiser</strong> (ex.: "Urgência Renal", "Convocação Plantão", "Resultado Exame").</li>
+                <li>O monitor Gmail roda <strong>a cada 30 min</strong> e lê <strong>todos os filtros ativos</strong> do banco — não precisa reiniciar a aplicação.</li>
+                <li>A busca <strong>ignora acentos e maiúsculas/minúsculas</strong>. Ex.: <code>urgencia renal</code> casa com <code>URGÊNCIA RENAL</code>.</li>
+                <li>É <strong>busca parcial</strong>: o filtro precisa estar <em>contido</em> no assunto, não precisa ser igual.</li>
+                <li>Use o botão <strong>toggle</strong> para pausar um filtro sem apagar (útil pra testar).</li>
+                <li>Clique <strong>Verificar Agora</strong> no Dashboard para forçar um ciclo de leitura imediato.</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Flash -->
+    <div th:if="${sucesso}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle"></i> <span th:text="${sucesso}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div th:if="${erro}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle"></i> <span th:text="${erro}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- Stats -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <small class="text-muted">Filtros cadastrados</small>
+                    <h3 class="mb-0" th:text="${totalFiltros}">0</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <small class="text-muted">Ativos agora</small>
+                    <h3 class="mb-0 text-success" th:text="${filtrosAtivos}">0</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <small class="text-muted">Próximo ciclo</small>
+                    <h3 class="mb-0"><i class="bi bi-clock-history"></i> ~30 min</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">
+                <i class="bi bi-list-ul"></i> Filtros cadastrados
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th style="width: 60px;">#</th>
+                            <th>Nome</th>
+                            <th>Padrão buscado no assunto</th>
+                            <th class="text-center">Ativo</th>
+                            <th>Cadastro</th>
+                            <th class="text-end">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:if="${#lists.isEmpty(filtros)}">
+                            <td colspan="6" class="text-center text-muted py-4">
+                                Nenhum filtro cadastrado. Adicione abaixo.
+                            </td>
+                        </tr>
+                        <tr th:each="f : ${filtros}">
+                            <td><code th:text="${f.id}">1</code></td>
+                            <td>
+                                <strong th:text="${f.nome}">Nome</strong>
+                            </td>
+                            <td>
+                                <code th:text="${f.padrao}" class="text-break">padrao</code>
+                            </td>
+                            <td class="text-center">
+                                <span th:if="${f.ativo}" class="badge bg-success">
+                                    <i class="bi bi-check"></i> Sim
+                                </span>
+                                <span th:unless="${f.ativo}" class="badge bg-secondary">
+                                    <i class="bi bi-pause"></i> Pausado
+                                </span>
+                            </td>
+                            <td>
+                                <small th:text="${f.dataCadastro != null ? #temporals.format(f.dataCadastro, 'dd/MM/yyyy HH:mm') : '-'}">
+                                    01/01/2026
+                                </small>
+                            </td>
+                            <td class="text-end">
+                                <form th:action="@{|/filtros/${f.id}/toggle|}" method="post" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary"
+                                            th:title="${f.ativo} ? 'Pausar este filtro' : 'Ativar este filtro'">
+                                        <i th:class="${f.ativo} ? 'bi bi-pause-fill' : 'bi bi-play-fill'"></i>
+                                        <span th:text="${f.ativo} ? 'Pausar' : 'Ativar'">Pausar</span>
+                                    </button>
+                                </form>
+                                <form th:action="@{|/filtros/${f.id}/remover|}" method="post"
+                                      onsubmit="return confirm('Remover o filtro ' + this.dataset.nome + '?');"
+                                      th:attr="data-nome=${f.nome}"
+                                      class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Apagar filtro definitivamente">
+                                        <i class="bi bi-trash"></i> Remover
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulário de novo filtro -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">
+                <i class="bi bi-plus-circle"></i> Adicionar novo filtro
+            </h5>
+        </div>
+        <div class="card-body">
+            <form th:action="@{/filtros}" method="post" class="row g-3">
+
+                <div class="col-md-4">
+                    <label for="nome" class="form-label">
+                        Nome do filtro <span class="text-danger">*</span>
+                    </label>
+                    <input type="text" id="nome" name="nome"
+                           class="form-control" required maxlength="120"
+                           placeholder="Ex.: Urgência Renal">
+                    <small class="form-text text-muted">
+                        Só para você identificar na lista — não influencia a busca.
+                    </small>
+                </div>
+
+                <div class="col-md-6">
+                    <label for="padrao" class="form-label">
+                        Trecho a buscar no assunto <span class="text-danger">*</span>
+                    </label>
+                    <input type="text" id="padrao" name="padrao"
+                           class="form-control" required maxlength="500"
+                           placeholder="Ex.: Urgência Renal">
+                    <small class="form-text text-muted">
+                        <i class="bi bi-lightbulb"></i>
+                        Cole um trecho exato que costuma aparecer no assunto.
+                        Mais curto = pega mais e-mails; mais específico = menos falso positivo.
+                    </small>
+                </div>
+
+                <div class="col-md-2 d-flex align-items-center">
+                    <div class="form-check form-switch mt-3">
+                        <input class="form-check-input" type="checkbox"
+                               id="ativo" name="ativo" value="true" checked>
+                        <label class="form-check-label" for="ativo">Ativar já</label>
+                    </div>
+                </div>
+
+                <div class="col-12 text-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-plus-lg"></i> Adicionar filtro
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Exemplos -->
+    <div class="card mt-4 border-secondary">
+        <div class="card-body">
+            <h6 class="card-title">
+                <i class="bi bi-stars"></i> Exemplos de filtros que funcionam bem
+            </h6>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>Cenário</th>
+                            <th>Padrão sugerido</th>
+                            <th>Por quê</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Notificação do encaminhamento Urgência Renal</td>
+                            <td><code>Urgência Renal</code></td>
+                            <td>Frase curta, presente em todo e-mail do sistema</td>
+                        </tr>
+                        <tr>
+                            <td>Convocação para plantão extra</td>
+                            <td><code>Plantão</code></td>
+                            <td>Palavra única, pega qualquer convocação que mencione</td>
+                        </tr>
+                        <tr>
+                            <td>Resultado de exame liberado</td>
+                            <td><code>resultado de exame</code></td>
+                            <td>Combinação específica, evita captar conversas casuais</td>
+                        </tr>
+                        <tr>
+                            <td>Cobrança urgente</td>
+                            <td><code>URGENTE</code></td>
+                            <td>Termo em caixa-alta — busca ignora caixa, pega tudo</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

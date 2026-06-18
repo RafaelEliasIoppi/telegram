@@ -15,8 +15,12 @@ import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
+import telegram.bot.domain.FiltroAssunto;
+import telegram.bot.repository.FiltroAssuntoRepository;
 
 import jakarta.mail.Folder;
 import jakarta.mail.Message;
@@ -90,6 +94,9 @@ public class UrgenciaRenalGmailMonitor implements FonteMonitor {
     @Value("${gmail.subject.filter:Notificação de novo e-mail – Urgência Renal}")
     private String subjectFilter;
 
+    @Autowired(required = false)
+    private FiltroAssuntoRepository filtroRepo;
+
     /**
      * Conjunto de Message-IDs já vistos nesta JVM. Funciona como guarda
      * primária contra reprocessamento; a guarda secundária é o hash do
@@ -152,7 +159,11 @@ public class UrgenciaRenalGmailMonitor implements FonteMonitor {
                 mensagens = inbox.getMessages();
             }
 
-            String filtroNormalizado = normalizar(subjectFilter);
+            List<String> filtrosNormalizados = carregarFiltrosAtivos();
+            if (filtrosNormalizados.isEmpty()) {
+                log.info("Gmail monitor: nenhum filtro de assunto configurado; pulando ciclo.");
+                return alertas;
+            }
             String ultimoAssunto = null;
 
             for (Message msg : mensagens) {
@@ -161,7 +172,12 @@ public class UrgenciaRenalGmailMonitor implements FonteMonitor {
                     if (subject == null || subject.isBlank()) {
                         continue;
                     }
-                    if (!normalizar(subject).contains(filtroNormalizado)) {
+                    String subjectNorm = normalizar(subject);
+                    boolean casa = false;
+                    for (String f : filtrosNormalizados) {
+                        if (subjectNorm.contains(f)) { casa = true; break; }
+                    }
+                    if (!casa) {
                         continue;
                     }
 
@@ -197,7 +213,7 @@ public class UrgenciaRenalGmailMonitor implements FonteMonitor {
             }
 
             if (alertas.isEmpty()) {
-                log.info("Gmail monitor: nenhum e-mail novo correspondente ao filtro '{}'.", subjectFilter);
+                log.info("Gmail monitor: nenhum e-mail novo casando com os filtros ativos.");
             } else {
                 log.info("Gmail monitor: {} novo(s) alerta(s) gerado(s).", alertas.size());
             }
@@ -221,6 +237,30 @@ public class UrgenciaRenalGmailMonitor implements FonteMonitor {
         }
 
         return alertas;
+    }
+
+    /**
+     * Carrega filtros ativos do banco; se o repositório não estiver
+     * disponível ou estiver vazio, usa o env {@code gmail.subject.filter}
+     * como fallback (preserva compat. para deploy sem DB).
+     */
+    private List<String> carregarFiltrosAtivos() {
+        List<String> resultado = new ArrayList<>();
+        if (filtroRepo != null) {
+            try {
+                for (FiltroAssunto f : filtroRepo.findByAtivoTrue()) {
+                    if (f.getPadrao() != null && !f.getPadrao().isBlank()) {
+                        resultado.add(normalizar(f.getPadrao()));
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Gmail monitor: falha ao ler filtros do DB ({}); usando env.", e.getMessage());
+            }
+        }
+        if (resultado.isEmpty() && subjectFilter != null && !subjectFilter.isBlank()) {
+            resultado.add(normalizar(subjectFilter));
+        }
+        return resultado;
     }
 
     /**

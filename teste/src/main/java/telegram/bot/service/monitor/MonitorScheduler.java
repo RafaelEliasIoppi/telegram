@@ -53,7 +53,7 @@ public class MonitorScheduler {
      * Executa o ciclo completo: para cada monitor ativo coleta alertas,
      * registra os novos e envia notificações Telegram.
      */
-    @Scheduled(fixedRateString = "${defesacivil.fixedRate:600000}", initialDelay = 30000)
+    @Scheduled(fixedRateString = "${monitor.fixedRate:${defesacivil.fixedRate:1800000}}", initialDelay = 30000)
     public void executarVerificacao() {
         log.info("Iniciando verificação de todas as fontes...");
         for (FonteMonitor monitor : monitores) {
@@ -114,9 +114,17 @@ public class MonitorScheduler {
             mensagem = mensagem.substring(0, LIMITE_TELEGRAM - 6) + "...";
         }
 
+        String imagem = alerta.getImagemUrl();
+        boolean temImagem = imagem != null && !imagem.isBlank()
+                && imagem.matches("(?i)https?://.+");
+
         for (Long chatId : chatIds) {
             try {
-                telegramService.enviarMarkdown(chatId, mensagem);
+                if (temImagem) {
+                    telegramService.enviarFotoMarkdown(chatId, imagem, mensagem);
+                } else {
+                    telegramService.enviarMarkdown(chatId, mensagem);
+                }
                 alertaService.marcarEnviado(alerta.getId());
             } catch (Exception e) {
                 log.error("Erro ao enviar alerta para chat {}: {}", chatId, e.getMessage());

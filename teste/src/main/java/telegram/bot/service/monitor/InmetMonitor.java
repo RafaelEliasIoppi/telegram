@@ -121,8 +121,11 @@ public class InmetMonitor implements FonteMonitor {
             }
         }
 
+        String imagemPagina = ImagemExtractor.extrairDeHtml(doc, URL_BASE);
         for (String texto : textosUnicos) {
-            alertas.add(montarAlerta(texto));
+            Alerta a = montarAlerta(texto);
+            if (imagemPagina != null) a.setImagemUrl(imagemPagina);
+            alertas.add(a);
         }
 
         if (alertas.isEmpty()) {

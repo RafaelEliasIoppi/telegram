@@ -91,10 +91,25 @@ public class DefesaCivilRSMonitor implements FonteMonitor {
         }
 
         List<Alerta> alertas = new ArrayList<>();
+        String imagemPagina = extrairImagemPagina();
         for (String texto : textos) {
-            alertas.add(montarAlerta(texto));
+            Alerta a = montarAlerta(texto);
+            if (imagemPagina != null) a.setImagemUrl(imagemPagina);
+            alertas.add(a);
         }
         return alertas;
+    }
+
+    private String extrairImagemPagina() {
+        try {
+            Document doc = Jsoup.connect(url)
+                    .userAgent(USER_AGENT)
+                    .timeout(TIMEOUT_MS)
+                    .get();
+            return ImagemExtractor.extrairDeHtml(doc, url);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /** Estratégia 1: RSS/Atom. */

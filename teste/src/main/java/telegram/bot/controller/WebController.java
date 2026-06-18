@@ -20,7 +20,11 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import telegram.bot.domain.Alerta;
 import telegram.bot.domain.ChatConfig;
+import telegram.bot.domain.FiltroAssunto;
+import telegram.bot.domain.FonteCustomizada;
 import telegram.bot.repository.ChatConfigRepository;
+import telegram.bot.repository.FiltroAssuntoRepository;
+import telegram.bot.repository.FonteCustomizadaRepository;
 import telegram.bot.service.AlertaService;
 import telegram.bot.service.bot.TelegramBotService;
 import telegram.bot.service.monitor.MonitorScheduler;
@@ -47,6 +51,8 @@ public class WebController {
     private final TelegramBotService telegramService;
     private final ChatConfigRepository chatConfigRepo;
     private final MonitorScheduler monitorScheduler;
+    private final FiltroAssuntoRepository filtroRepo;
+    private final FonteCustomizadaRepository fonteRepo;
 
     @Value("${defesacivil.enabled:true}")
     private boolean defesaCivilEnabled;
@@ -57,15 +63,22 @@ public class WebController {
     @Value("${gmail.enabled:false}")
     private boolean gmailEnabled;
 
+    @Value("${monitor.fixedRate:${defesacivil.fixedRate:1800000}}")
+    private long monitorFixedRateMs;
+
     @Autowired
     public WebController(AlertaService alertaService,
                          TelegramBotService telegramService,
                          ChatConfigRepository chatConfigRepo,
-                         MonitorScheduler monitorScheduler) {
+                         MonitorScheduler monitorScheduler,
+                         FiltroAssuntoRepository filtroRepo,
+                         FonteCustomizadaRepository fonteRepo) {
         this.alertaService = alertaService;
         this.telegramService = telegramService;
         this.chatConfigRepo = chatConfigRepo;
         this.monitorScheduler = monitorScheduler;
+        this.filtroRepo = filtroRepo;
+        this.fonteRepo = fonteRepo;
     }
 
     @PostMapping("/bot/verificar-agora")
@@ -138,28 +151,30 @@ public class WebController {
         }
 
         // Fontes de monitoramento
+        String intervaloGlobal = formatarIntervalo(monitorFixedRateMs);
         List<Map<String, Object>> fontesMonitoramento = new ArrayList<>();
         fontesMonitoramento.add(montarFonte(
-                "Defesa Civil RS",
-                "DEFESA_CIVIL_RS",
-                "bi-shield-exclamation",
-                defesaCivilEnabled,
-                "10 min",
+                "Defesa Civil RS", "DEFESA_CIVIL_RS", "bi-shield-exclamation",
+                defesaCivilEnabled, intervaloGlobal,
                 contagemPorFonte.getOrDefault("DEFESA_CIVIL_RS", 0L)));
         fontesMonitoramento.add(montarFonte(
-                "INMET",
-                "INMET",
-                "bi-cloud-rain-heavy",
-                inmetEnabled,
-                "30 min",
+                "INMET", "INMET", "bi-cloud-rain-heavy",
+                inmetEnabled, intervaloGlobal,
                 contagemPorFonte.getOrDefault("INMET", 0L)));
         fontesMonitoramento.add(montarFonte(
-                "Gmail — Urgência Renal",
-                "GMAIL_URGENCIA_RENAL",
-                "bi-envelope-exclamation",
-                gmailEnabled,
-                "5 min",
+                "Gmail — Urgência Renal", "GMAIL_URGENCIA_RENAL", "bi-envelope-exclamation",
+                gmailEnabled, intervaloGlobal,
                 contagemPorFonte.getOrDefault("GMAIL_URGENCIA_RENAL", 0L)));
+        try {
+            for (FonteCustomizada fc : fonteRepo.findAll()) {
+                fontesMonitoramento.add(montarFonte(
+                        fc.getNome(), fc.getCodigo(), "bi-broadcast",
+                        fc.isAtivo(), intervaloGlobal,
+                        contagemPorFonte.getOrDefault(fc.getCodigo(), 0L)));
+            }
+        } catch (Exception ignored) {
+            // se falhar, segue só com as nativas
+        }
 
         model.addAttribute("pageTitle", "Painel de Controle");
         model.addAttribute("alertas", alertas);
@@ -173,6 +188,13 @@ public class WebController {
         model.addAttribute("fontesMonitoramento", fontesMonitoramento);
         model.addAttribute("serverTime", LocalDateTime.now().format(fmt));
         return "dashboard";
+    }
+
+    private String formatarIntervalo(long ms) {
+        long min = ms / 60000L;
+        if (min <= 0) return ms + " ms";
+        if (min < 60) return min + " min";
+        return (min / 60) + " h";
     }
 
     private Map<String, Object> montarFonte(String nome,
@@ -212,6 +234,7 @@ public class WebController {
         List<ChatConfig> chats = alertaService.listarChats();
         model.addAttribute("pageTitle", "Chats");
         model.addAttribute("chats", chats);
+        model.addAttribute("fontesDisponiveis", listarFontesDisponiveis());
         if (!model.containsAttribute("chatForm")) {
             ChatConfig form = new ChatConfig();
             form.setAtivo(true);
@@ -219,6 +242,26 @@ public class WebController {
             model.addAttribute("chatForm", form);
         }
         return "chats";
+    }
+
+    /**
+     * Monta a lista de todas as fontes que podem ser escolhidas em /chats:
+     * nativas (Defesa Civil RS, INMET, Gmail Urgência Renal) + customizadas
+     * cadastradas em /fontes.
+     */
+    private List<Map<String, String>> listarFontesDisponiveis() {
+        List<Map<String, String>> out = new ArrayList<>();
+        out.add(Map.of("codigo", "DEFESA_CIVIL_RS", "nome", "Defesa Civil RS"));
+        out.add(Map.of("codigo", "INMET", "nome", "INMET"));
+        out.add(Map.of("codigo", "GMAIL_URGENCIA_RENAL", "nome", "Gmail — Urgência Renal"));
+        try {
+            for (FonteCustomizada f : fonteRepo.findAll()) {
+                out.add(Map.of("codigo", f.getCodigo(), "nome", f.getNome()));
+            }
+        } catch (Exception ignored) {
+            // se o repo falhar, devolve só as nativas
+        }
+        return out;
     }
 
     @PostMapping("/chats")
@@ -291,5 +334,145 @@ public class WebController {
             ra.addFlashAttribute("erro", "Erro ao remover webhook: " + e.getMessage());
         }
         return "redirect:/bot";
+    }
+
+    // ------------------------------------------------------------------
+    // Filtros de Assunto (Gmail)
+    // ------------------------------------------------------------------
+
+    @GetMapping("/filtros")
+    public String filtros(Model model) {
+        List<FiltroAssunto> lista = filtroRepo.findAll();
+        lista.sort(Comparator.comparing(FiltroAssunto::getId, Comparator.nullsLast(Comparator.naturalOrder())));
+        long ativos = lista.stream().filter(FiltroAssunto::isAtivo).count();
+        model.addAttribute("pageTitle", "Filtros de Assunto");
+        model.addAttribute("filtros", lista);
+        model.addAttribute("totalFiltros", lista.size());
+        model.addAttribute("filtrosAtivos", ativos);
+        return "filtros";
+    }
+
+    @PostMapping("/filtros")
+    public String adicionarFiltro(@org.springframework.web.bind.annotation.RequestParam String nome,
+                                  @org.springframework.web.bind.annotation.RequestParam String padrao,
+                                  @org.springframework.web.bind.annotation.RequestParam(required = false) Boolean ativo,
+                                  RedirectAttributes ra) {
+        if (nome == null || nome.isBlank() || padrao == null || padrao.isBlank()) {
+            ra.addFlashAttribute("erro", "Nome e Padrão são obrigatórios.");
+            return "redirect:/filtros";
+        }
+        FiltroAssunto f = FiltroAssunto.builder()
+                .nome(nome.trim())
+                .padrao(padrao.trim())
+                .ativo(ativo != null && ativo)
+                .build();
+        filtroRepo.save(f);
+        ra.addFlashAttribute("sucesso", "Filtro '" + f.getNome() + "' adicionado.");
+        return "redirect:/filtros";
+    }
+
+    @PostMapping("/filtros/{id}/toggle")
+    public String alternarFiltro(@PathVariable Long id, RedirectAttributes ra) {
+        filtroRepo.findById(id).ifPresentOrElse(f -> {
+            f.setAtivo(!f.isAtivo());
+            filtroRepo.save(f);
+            ra.addFlashAttribute("sucesso",
+                    "Filtro '" + f.getNome() + "' " + (f.isAtivo() ? "ativado" : "desativado") + ".");
+        }, () -> ra.addFlashAttribute("erro", "Filtro não encontrado."));
+        return "redirect:/filtros";
+    }
+
+    @PostMapping("/filtros/{id}/remover")
+    public String removerFiltro(@PathVariable Long id, RedirectAttributes ra) {
+        filtroRepo.findById(id).ifPresentOrElse(f -> {
+            filtroRepo.delete(f);
+            ra.addFlashAttribute("sucesso", "Filtro '" + f.getNome() + "' removido.");
+        }, () -> ra.addFlashAttribute("erro", "Filtro não encontrado."));
+        return "redirect:/filtros";
+    }
+
+    // ------------------------------------------------------------------
+    // Fontes Customizadas (URL / RSS)
+    // ------------------------------------------------------------------
+
+    @GetMapping("/fontes")
+    public String fontes(Model model) {
+        List<FonteCustomizada> lista = fonteRepo.findAll();
+        lista.sort(Comparator.comparing(FonteCustomizada::getId, Comparator.nullsLast(Comparator.naturalOrder())));
+        model.addAttribute("pageTitle", "Fontes de Monitoramento");
+        model.addAttribute("fontes", lista);
+        model.addAttribute("totalFontes", lista.size());
+        model.addAttribute("fontesAtivas", lista.stream().filter(FonteCustomizada::isAtivo).count());
+        return "fontes";
+    }
+
+    @PostMapping("/fontes")
+    public String adicionarFonte(@org.springframework.web.bind.annotation.RequestParam String nome,
+                                 @org.springframework.web.bind.annotation.RequestParam String tipo,
+                                 @org.springframework.web.bind.annotation.RequestParam String url,
+                                 @org.springframework.web.bind.annotation.RequestParam(required = false) String seletor,
+                                 @org.springframework.web.bind.annotation.RequestParam(required = false) String palavrasChave,
+                                 @org.springframework.web.bind.annotation.RequestParam(required = false) String nivel,
+                                 @org.springframework.web.bind.annotation.RequestParam(required = false) Boolean ativo,
+                                 RedirectAttributes ra) {
+        if (nome == null || nome.isBlank() || url == null || url.isBlank()) {
+            ra.addFlashAttribute("erro", "Nome e URL são obrigatórios.");
+            return "redirect:/fontes";
+        }
+        if (!url.matches("(?i)https?://.+")) {
+            ra.addFlashAttribute("erro", "URL precisa começar com http:// ou https://.");
+            return "redirect:/fontes";
+        }
+        String codigo = nome.trim().toUpperCase()
+                .replaceAll("[ÁÀÂÃÄ]", "A").replaceAll("[ÉÈÊË]", "E")
+                .replaceAll("[ÍÌÎÏ]", "I").replaceAll("[ÓÒÔÕÖ]", "O")
+                .replaceAll("[ÚÙÛÜ]", "U").replaceAll("[Ç]", "C")
+                .replaceAll("[^A-Z0-9]+", "_")
+                .replaceAll("(^_+|_+$)", "");
+        if (codigo.isBlank()) codigo = "FONTE_" + System.currentTimeMillis();
+
+        FonteCustomizada f = FonteCustomizada.builder()
+                .nome(nome.trim())
+                .codigo(codigo)
+                .tipo("RSS".equalsIgnoreCase(tipo) ? "RSS" : "URL")
+                .url(url.trim())
+                .seletor(seletor == null ? null : seletor.trim())
+                .palavrasChave(palavrasChave == null ? null : palavrasChave.trim())
+                .nivel(nivel == null || nivel.isBlank() ? "INFO" : nivel.trim().toUpperCase())
+                .ativo(ativo != null && ativo)
+                .build();
+        fonteRepo.save(f);
+        ra.addFlashAttribute("sucesso", "Fonte '" + f.getNome() + "' cadastrada (código " + codigo + ").");
+        return "redirect:/fontes";
+    }
+
+    @PostMapping("/fontes/{id}/toggle")
+    public String alternarFonte(@PathVariable Long id, RedirectAttributes ra) {
+        fonteRepo.findById(id).ifPresentOrElse(f -> {
+            f.setAtivo(!f.isAtivo());
+            fonteRepo.save(f);
+            ra.addFlashAttribute("sucesso",
+                    "Fonte '" + f.getNome() + "' " + (f.isAtivo() ? "ativada" : "desativada") + ".");
+        }, () -> ra.addFlashAttribute("erro", "Fonte não encontrada."));
+        return "redirect:/fontes";
+    }
+
+    @PostMapping("/fontes/{id}/remover")
+    public String removerFonte(@PathVariable Long id, RedirectAttributes ra) {
+        fonteRepo.findById(id).ifPresentOrElse(f -> {
+            fonteRepo.delete(f);
+            ra.addFlashAttribute("sucesso", "Fonte '" + f.getNome() + "' removida.");
+        }, () -> ra.addFlashAttribute("erro", "Fonte não encontrada."));
+        return "redirect:/fontes";
+    }
+
+    // ------------------------------------------------------------------
+    // Ajuda
+    // ------------------------------------------------------------------
+
+    @GetMapping("/ajuda")
+    public String ajuda(Model model) {
+        model.addAttribute("pageTitle", "Ajuda");
+        return "ajuda";
     }
 }
