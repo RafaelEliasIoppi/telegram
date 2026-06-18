@@ -475,4 +475,79 @@ public class WebController {
         model.addAttribute("pageTitle", "Ajuda");
         return "ajuda";
     }
+
+    // ------------------------------------------------------------------
+    // Teste rápido — envio direto pro Telegram
+    // ------------------------------------------------------------------
+
+    @GetMapping("/teste")
+    public String teste(Model model) {
+        model.addAttribute("pageTitle", "Teste de envio");
+        model.addAttribute("chats", alertaService.listarChats());
+        return "teste";
+    }
+
+    @PostMapping(value = "/teste", consumes = {"multipart/form-data", "application/x-www-form-urlencoded"})
+    public String enviarTeste(@org.springframework.web.bind.annotation.RequestParam(required = false) Long chatId,
+                              @org.springframework.web.bind.annotation.RequestParam(required = false) String chatIdCustom,
+                              @org.springframework.web.bind.annotation.RequestParam(required = false) String texto,
+                              @org.springframework.web.bind.annotation.RequestParam(required = false) String anexoUrl,
+                              @org.springframework.web.bind.annotation.RequestParam(value = "anexoArquivo", required = false)
+                                  org.springframework.web.multipart.MultipartFile anexoArquivo,
+                              RedirectAttributes ra) {
+        Long destino = chatId;
+        if (chatIdCustom != null && !chatIdCustom.isBlank()) {
+            try { destino = Long.parseLong(chatIdCustom.trim()); }
+            catch (NumberFormatException e) {
+                ra.addFlashAttribute("erro", "Chat ID customizado inválido.");
+                return "redirect:/teste";
+            }
+        }
+        if (destino == null) {
+            ra.addFlashAttribute("erro", "Selecione um chat cadastrado ou informe um Chat ID.");
+            return "redirect:/teste";
+        }
+
+        boolean temArquivo = anexoArquivo != null && !anexoArquivo.isEmpty();
+        boolean temUrl = anexoUrl != null && !anexoUrl.isBlank();
+        boolean temTexto = texto != null && !texto.isBlank();
+
+        if (!temTexto && !temArquivo && !temUrl) {
+            ra.addFlashAttribute("erro", "Escreva um texto, anexe um arquivo ou cole uma URL.");
+            return "redirect:/teste";
+        }
+
+        try {
+            if (temArquivo) {
+                String nome = anexoArquivo.getOriginalFilename() == null
+                        ? "arquivo.bin" : anexoArquivo.getOriginalFilename();
+                String contentType = anexoArquivo.getContentType() == null
+                        ? "" : anexoArquivo.getContentType().toLowerCase();
+                boolean isFoto = contentType.startsWith("image/")
+                        || nome.toLowerCase().matches(".*\\.(jpe?g|png|webp)$");
+                String method = isFoto ? "sendPhoto" : "sendDocument";
+                String campo = isFoto ? "photo" : "document";
+                telegramService.enviarArquivoMultipart(destino, method, campo,
+                        nome, anexoArquivo.getBytes(), texto);
+                ra.addFlashAttribute("sucesso",
+                        "Enviado para o chat " + destino + " com anexo '" + nome + "'.");
+            } else if (temUrl) {
+                String lower = anexoUrl.toLowerCase();
+                boolean isFoto = lower.matches(".*\\.(jpe?g|png|webp)(\\?.*)?$");
+                if (isFoto) {
+                    telegramService.enviarFotoMarkdown(destino, anexoUrl.trim(), texto);
+                } else {
+                    String msg = (temTexto ? texto + "\n\n" : "") + anexoUrl.trim();
+                    telegramService.enviarMarkdown(destino, msg);
+                }
+                ra.addFlashAttribute("sucesso", "Enviado para o chat " + destino + " com link.");
+            } else {
+                telegramService.enviarMarkdown(destino, texto);
+                ra.addFlashAttribute("sucesso", "Mensagem enviada para o chat " + destino + ".");
+            }
+        } catch (Exception e) {
+            ra.addFlashAttribute("erro", "Falha no envio: " + e.getMessage());
+        }
+        return "redirect:/teste";
+    }
 }

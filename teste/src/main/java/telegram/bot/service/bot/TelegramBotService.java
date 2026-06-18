@@ -10,7 +10,13 @@ import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 /**
@@ -108,6 +114,43 @@ public class TelegramBotService {
             body.put("parse_mode", "Markdown");
         }
         post("sendPhoto", body);
+    }
+
+    /**
+     * Faz upload (multipart) de um arquivo para o Telegram.
+     *
+     * @param chatId        chat de destino
+     * @param method        "sendPhoto" para foto ou "sendDocument" para arquivo qualquer
+     * @param campo         "photo" ou "document" (deve casar com o {@code method})
+     * @param nomeArquivo   nome original (com extensão)
+     * @param bytes         conteúdo do arquivo
+     * @param caption       legenda Markdown opcional (até 1024 chars)
+     * @return resposta crua da API
+     */
+    public String enviarArquivoMultipart(long chatId, String method, String campo,
+                                         String nomeArquivo, byte[] bytes, String caption) {
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("chat_id", String.valueOf(chatId));
+        if (caption != null && !caption.isBlank()) {
+            String cap = caption.length() > 1024 ? caption.substring(0, 1020) + "..." : caption;
+            body.add("caption", cap);
+            body.add("parse_mode", "Markdown");
+        }
+        ByteArrayResource res = new ByteArrayResource(bytes) {
+            @Override public String getFilename() { return nomeArquivo; }
+        };
+        body.add(campo, res);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+        HttpEntity<MultiValueMap<String, Object>> req = new HttpEntity<>(body, headers);
+        String url = String.format(API_BASE, token, method);
+        try {
+            return restTemplate.postForObject(url, req, String.class);
+        } catch (Exception e) {
+            logger.error("Telegram {} upload falhou: {}", method, e.getMessage());
+            throw new RuntimeException("Falha ao enviar para o Telegram: " + e.getMessage(), e);
+        }
     }
 
     /**

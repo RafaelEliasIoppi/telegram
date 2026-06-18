@@ -113,6 +113,13 @@
                 </li>
                 <li class="nav-item">
                     <a class="nav-link"
+                       th:classappend="${#strings.startsWith(uri,'/teste')} ? 'active' : ''"
+                       th:href="@{/teste}">
+                        <i class="bi bi-send"></i> Testar envio
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link"
                        th:classappend="${#strings.startsWith(uri,'/ajuda')} ? 'active' : ''"
                        th:href="@{/ajuda}">
                         <i class="bi bi-question-circle"></i> Ajuda

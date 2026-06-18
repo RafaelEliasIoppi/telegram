@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{::content})}">
+<body>
+
+<div th:fragment="content">
+
+    <h1 class="mb-2"><i class="bi bi-send"></i> Teste de envio</h1>
+    <p class="text-muted mb-4">
+        Mande agora mesmo uma mensagem direto pro Telegram para verificar que tudo
+        está funcionando. Pode anexar foto, PDF, áudio — qualquer arquivo até 20 MB.
+    </p>
+
+    <!-- Como funciona -->
+    <div class="card mb-4 border-info">
+        <div class="card-body">
+            <h6 class="card-title text-info">
+                <i class="bi bi-info-circle"></i> Dicas
+            </h6>
+            <ul class="mb-0 small">
+                <li>Escolha um chat já cadastrado ou cole um <strong>Chat ID</strong> qualquer no campo customizado.</li>
+                <li>Se anexar um arquivo: imagens (jpg/png/webp) vão como <code>sendPhoto</code>; o resto vai como <code>sendDocument</code>.</li>
+                <li>Se preferir não fazer upload, cole uma <strong>URL pública</strong> — o Telegram baixa direto. Útil pra mandar mapa, gráfico, etc.</li>
+                <li>O texto suporta <strong>Markdown</strong>: <code>*negrito*</code>, <code>_itálico_</code>, <code>`código`</code>, <code>[link](url)</code>.</li>
+                <li>Esse envio é <strong>imediato</strong> — não passa pelo dedup do sistema; não vira histórico.</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Flash -->
+    <div th:if="${sucesso}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle"></i> <span th:text="${sucesso}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div th:if="${erro}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle"></i> <span th:text="${erro}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- Form -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="bi bi-pencil-square"></i> Compor mensagem</h5>
+        </div>
+        <div class="card-body">
+            <form th:action="@{/teste}" method="post" enctype="multipart/form-data" class="row g-3">
+
+                <div class="col-md-6">
+                    <label for="chatId" class="form-label">Chat cadastrado</label>
+                    <select id="chatId" name="chatId" class="form-select">
+                        <option value="">— escolher um chat —</option>
+                        <option th:each="c : ${chats}"
+                                th:value="${c.chatId}"
+                                th:text="${c.nome != null and !c.nome.isEmpty()} ? ${c.nome} + ' (' + ${c.chatId} + ')' : ${c.chatId}">
+                            Nome (123)
+                        </option>
+                    </select>
+                    <small class="form-text text-muted">
+                        Preferido. Aparece a lista dos seus chats em <a th:href="@{/chats}">/chats</a>.
+                    </small>
+                </div>
+
+                <div class="col-md-6">
+                    <label for="chatIdCustom" class="form-label">Ou Chat ID manual</label>
+                    <input type="text" id="chatIdCustom" name="chatIdCustom"
+                           class="form-control" pattern="-?\d+"
+                           placeholder="Ex.: 7648003850 ou -100123...">
+                    <small class="form-text text-muted">
+                        Se preencher, sobrescreve a seleção acima. Use Chat ID negativo pra grupo.
+                    </small>
+                </div>
+
+                <div class="col-12">
+                    <label for="texto" class="form-label">Texto (Markdown)</label>
+                    <textarea id="texto" name="texto" rows="4" class="form-control"
+                              placeholder="*Teste do bot* — _isso é uma mensagem em Markdown_."></textarea>
+                </div>
+
+                <div class="col-md-6">
+                    <label for="anexoArquivo" class="form-label">Anexo (arquivo)</label>
+                    <input type="file" id="anexoArquivo" name="anexoArquivo" class="form-control">
+                    <small class="form-text text-muted">
+                        Imagens viram foto; o resto vai como documento. Limite 20 MB.
+                    </small>
+                </div>
+
+                <div class="col-md-6">
+                    <label for="anexoUrl" class="form-label">Ou URL pública</label>
+                    <input type="url" id="anexoUrl" name="anexoUrl" class="form-control"
+                           placeholder="https://...">
+                    <small class="form-text text-muted">
+                        Se for jpg/png/webp, vira foto. Senão, fica linkado no texto.
+                    </small>
+                </div>
+
+                <div class="col-12 text-end">
+                    <a th:href="@{/dashboard}" class="btn btn-link">Cancelar</a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-send-fill"></i> Enviar agora
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>
