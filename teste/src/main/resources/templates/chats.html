@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{::content})}">
+<body>
+
+<div th:fragment="content">
+
+    <h1 class="mb-4">
+        <i class="bi bi-chat-dots"></i> Chats Cadastrados
+    </h1>
+
+    <div th:if="${sucesso}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle"></i> <span th:text="${sucesso}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div th:if="${erro}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle"></i> <span th:text="${erro}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- Tabela de chats -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">
+                <i class="bi bi-list-ul"></i> Lista de Chats
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Chat ID</th>
+                            <th>Nome</th>
+                            <th class="text-center">Ativo</th>
+                            <th>Nível Mínimo</th>
+                            <th>Fontes Ativas</th>
+                            <th>Cadastro</th>
+                            <th class="text-end">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:if="${#lists.isEmpty(chats)}">
+                            <td colspan="7" class="text-center text-muted py-4">
+                                Nenhum chat cadastrado.
+                            </td>
+                        </tr>
+                        <tr th:each="c : ${chats}">
+                            <td><code th:text="${c.chatId}">0</code></td>
+                            <td th:text="${c.nome}">Nome</td>
+                            <td class="text-center">
+                                <span th:if="${c.ativo}" class="badge bg-success">
+                                    <i class="bi bi-check"></i> Sim
+                                </span>
+                                <span th:unless="${c.ativo}" class="badge bg-secondary">
+                                    <i class="bi bi-x"></i> Não
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge"
+                                      th:classappend="'badge-' + ${c.nivelMinimo}"
+                                      th:text="${c.nivelMinimo}">INFO</span>
+                            </td>
+                            <td>
+                                <small th:text="${c.fontesAtivas != null and !c.fontesAtivas.isEmpty()} ? ${c.fontesAtivas} : 'Todas'">
+                                    Todas
+                                </small>
+                            </td>
+                            <td>
+                                <small th:text="${c.dataCadastro != null ? #temporals.format(c.dataCadastro, 'dd/MM/yyyy HH:mm') : '-'}">
+                                    01/01/2026
+                                </small>
+                            </td>
+                            <td class="text-end">
+                                <form th:action="@{|/chats/${c.chatId}/remover|}" method="post"
+                                      onsubmit="return confirm('Remover este chat?');"
+                                      class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-trash"></i> Remover
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Form: adicionar chat -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">
+                <i class="bi bi-plus-circle"></i> Adicionar Chat
+            </h5>
+        </div>
+        <div class="card-body">
+            <form th:action="@{/chats}" th:object="${chatForm}" method="post" class="row g-3">
+
+                <div class="col-md-4">
+                    <label for="chatId" class="form-label">Chat ID *</label>
+                    <input type="number" id="chatId" th:field="*{chatId}"
+                           class="form-control" required>
+                </div>
+
+                <div class="col-md-4">
+                    <label for="nome" class="form-label">Nome</label>
+                    <input type="text" id="nome" th:field="*{nome}"
+                           class="form-control" placeholder="Ex: Família, Equipe RS">
+                </div>
+
+                <div class="col-md-4">
+                    <label for="nivelMinimo" class="form-label">Nível Mínimo</label>
+                    <select id="nivelMinimo" th:field="*{nivelMinimo}" class="form-select">
+                        <option value="INFO">INFO</option>
+                        <option value="AVISO">AVISO</option>
+                        <option value="CRITICO">CRITICO</option>
+                    </select>
+                </div>
+
+                <div class="col-md-8">
+                    <label class="form-label d-block">Fontes Ativas</label>
+                    <small class="text-muted d-block mb-2">
+                        Se nenhuma for selecionada, todas serão consideradas.
+                    </small>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox"
+                               id="fonteDefesa" name="fontesAtivasList" value="DEFESA_CIVIL_RS">
+                        <label class="form-check-label" for="fonteDefesa">DEFESA_CIVIL_RS</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox"
+                               id="fonteInmet" name="fontesAtivasList" value="INMET">
+                        <label class="form-check-label" for="fonteInmet">INMET</label>
+                    </div>
+                </div>
+
+                <div class="col-md-4 d-flex align-items-center">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox"
+                               id="ativo" th:field="*{ativo}">
+                        <label class="form-check-label" for="ativo">Ativo</label>
+                    </div>
+                </div>
+
+                <input type="hidden" id="fontesAtivas" th:field="*{fontesAtivas}">
+
+                <div class="col-12 text-end">
+                    <button type="submit" class="btn btn-primary"
+                            onclick="serializarFontes()">
+                        <i class="bi bi-plus-lg"></i> Adicionar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function serializarFontes() {
+            var checks = document.querySelectorAll('input[name="fontesAtivasList"]:checked');
+            var valores = [];
+            checks.forEach(function (c) { valores.push(c.value); });
+            document.getElementById('fontesAtivas').value = valores.join(',');
+        }
+    </script>
+
+</div>
+
+</body>
+</html>

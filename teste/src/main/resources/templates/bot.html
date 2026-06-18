@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{::content})}">
+<body>
+
+<div th:fragment="content">
+
+    <h1 class="mb-4">
+        <i class="bi bi-gear"></i> Gerenciamento do Bot
+    </h1>
+
+    <div th:if="${sucesso}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle"></i> <span th:text="${sucesso}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div th:if="${erro}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle"></i> <span th:text="${erro}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- Status do bot -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">
+                <i class="bi bi-info-circle"></i> Status do Bot (getMe)
+            </h5>
+        </div>
+        <div class="card-body">
+            <pre class="bg-light p-3 rounded mb-0" style="white-space:pre-wrap; word-break:break-all;"
+                 th:text="${botInfo}">Informações do bot.</pre>
+        </div>
+    </div>
+
+    <!-- Webhook -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">
+                <i class="bi bi-broadcast"></i> Webhook
+            </h5>
+        </div>
+        <div class="card-body">
+            <p class="text-muted">
+                Use os botões abaixo para registrar ou remover o webhook do bot
+                no servidor do Telegram.
+            </p>
+            <div class="d-flex gap-2">
+                <form th:action="@{/bot/webhook/registrar}" method="post" class="d-inline">
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-cloud-arrow-up"></i> Registrar Webhook
+                    </button>
+                </form>
+                <form th:action="@{/bot/webhook/remover}" method="post" class="d-inline">
+                    <button type="submit" class="btn btn-outline-danger"
+                            onclick="return confirm('Remover o webhook?');">
+                        <i class="bi bi-cloud-slash"></i> Remover Webhook
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Comandos disponíveis -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">
+                <i class="bi bi-terminal"></i> Comandos do Bot
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th>Comando</th>
+                            <th>Descrição</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>/start</code></td>
+                            <td>Inicia a interação com o bot e registra o chat.</td>
+                        </tr>
+                        <tr>
+                            <td><code>/status</code></td>
+                            <td>Exibe o status atual do bot e configuração do chat.</td>
+                        </tr>
+                        <tr>
+                            <td><code>/historico</code></td>
+                            <td>Mostra os alertas mais recentes.</td>
+                        </tr>
+                        <tr>
+                            <td><code>/fontes</code></td>
+                            <td>Configura quais fontes de alerta o chat recebe.</td>
+                        </tr>
+                        <tr>
+                            <td><code>/nivel</code></td>
+                            <td>Configura o nível mínimo (INFO / AVISO / CRITICO).</td>
+                        </tr>
+                        <tr>
+                            <td><code>/verificar</code></td>
+                            <td>Executa uma verificação manual das fontes.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

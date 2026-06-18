@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{::content})}">
+<body>
+
+<div th:fragment="content">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mb-0">
+            <i class="bi bi-speedometer2"></i> Dashboard
+        </h1>
+        <form th:action="@{/bot/verificar-agora}" method="post">
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-arrow-clockwise"></i> Verificar Agora
+            </button>
+        </form>
+    </div>
+
+    <!-- Cards de resumo -->
+    <div class="row mb-4 g-3">
+        <div class="col-md-3 col-sm-6">
+            <div class="card text-white bg-primary card-stat shadow-sm">
+                <div class="card-body">
+                    <h6 class="text-uppercase mb-2">
+                        <i class="bi bi-calendar-day"></i> Alertas Hoje
+                    </h6>
+                    <h2 th:text="${alertasHoje}">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card text-white bg-secondary card-stat shadow-sm">
+                <div class="card-body">
+                    <h6 class="text-uppercase mb-2">
+                        <i class="bi bi-archive"></i> Total Recentes
+                    </h6>
+                    <h2 th:text="${totalAlertas}">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card text-white bg-success card-stat shadow-sm">
+                <div class="card-body">
+                    <h6 class="text-uppercase mb-2">
+                        <i class="bi bi-chat-square-dots"></i> Chats Ativos
+                    </h6>
+                    <h2 th:text="${chatsAtivos}">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card text-white bg-info card-stat shadow-sm">
+                <div class="card-body">
+                    <h6 class="text-uppercase mb-2">
+                        <i class="bi bi-broadcast"></i> Status
+                    </h6>
+                    <h2><i class="bi bi-check-circle"></i></h2>
+                    <small>Webhook OK</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabela últimos alertas -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-bell"></i> Últimos Alertas
+            </h5>
+            <a th:href="@{/historico}" class="btn btn-sm btn-outline-secondary">
+                Ver Histórico Completo
+            </a>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Nível</th>
+                            <th>Título</th>
+                            <th>Fonte</th>
+                            <th>Data</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:if="${#lists.isEmpty(alertas)}">
+                            <td colspan="4" class="text-center text-muted py-4">
+                                Nenhum alerta registrado.
+                            </td>
+                        </tr>
+                        <tr th:each="alerta : ${alertas}">
+                            <td>
+                                <span class="badge"
+                                      th:classappend="'badge-' + ${alerta.nivel}"
+                                      th:text="${alerta.nivel}">INFO</span>
+                            </td>
+                            <td class="truncate"
+                                th:title="${alerta.titulo}"
+                                th:text="${#strings.abbreviate(alerta.titulo, 80)}">
+                                Título
+                            </td>
+                            <td>
+                                <small class="text-muted" th:text="${alerta.fonte}">FONTE</small>
+                            </td>
+                            <td>
+                                <small th:text="${alerta.dataHora != null ? #temporals.format(alerta.dataHora, 'dd/MM/yyyy HH:mm') : '-'}">
+                                    01/01/2026 00:00
+                                </small>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>
