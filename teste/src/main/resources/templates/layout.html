@@ -92,9 +92,16 @@
                 </li>
                 <li class="nav-item">
                     <a class="nav-link"
+                       th:classappend="${#strings.startsWith(uri,'/fontes')} ? 'active' : ''"
+                       th:href="@{/fontes}">
+                        <i class="bi bi-broadcast"></i> Fontes
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link"
                        th:classappend="${#strings.startsWith(uri,'/filtros')} ? 'active' : ''"
                        th:href="@{/filtros}">
-                        <i class="bi bi-funnel"></i> Filtros
+                        <i class="bi bi-funnel"></i> Filtros Gmail
                     </a>
                 </li>
                 <li class="nav-item">
