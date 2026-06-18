@@ -1,3 +1,45 @@
-# Ignorar arquivos sensíveis
+# Arquivos sensíveis
 .env
 *.secret
+*.key
+*.pem
+
+# Maven
+target/
+*.jar
+*.war
+*.ear
+
+# IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+*.code-workspace
+.classpath
+.project
+.settings/
+.factorypath
+
+# Spring Boot DevTools
+.sts4-cache/
+
+# Banco H2 local
+*.db
+*.mv.db
+*.trace.db
+teste/data/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Arquivos temporários de preview/teste
+defesa_preview.txt
+defesa_send_result.json
+teste/teste/
