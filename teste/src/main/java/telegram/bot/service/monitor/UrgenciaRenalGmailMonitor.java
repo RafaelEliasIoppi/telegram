@@ -1,0 +1,368 @@
+package telegram.bot.service.monitor;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.text.Normalizer;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.Properties;
+import java.util.Set;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import jakarta.mail.Folder;
+import jakarta.mail.Message;
+import jakarta.mail.Multipart;
+import jakarta.mail.Part;
+import jakarta.mail.Session;
+import jakarta.mail.Store;
+import jakarta.mail.search.AndTerm;
+import jakarta.mail.search.ComparisonTerm;
+import jakarta.mail.search.FlagTerm;
+import jakarta.mail.search.ReceivedDateTerm;
+import jakarta.mail.search.SearchTerm;
+import lombok.extern.slf4j.Slf4j;
+import telegram.bot.domain.Alerta;
+
+/**
+ * Monitor de caixa Gmail (via IMAP) para e-mails com assunto contendo
+ * a string configurada em {@code gmail.subject.filter} (default:
+ * "Notificação de novo e-mail – Urgência Renal").
+ *
+ * <p>Estratégia:
+ * <ol>
+ *   <li>Conecta via IMAPS (SSL/993) usando senha de app do Gmail;</li>
+ *   <li>Busca mensagens UNREAD recebidas nas últimas 24h em READ_ONLY
+ *       (não marca como lida);</li>
+ *   <li>Filtra em Java por assunto normalizado (sem diacríticos, lowercase)
+ *       contendo o filtro configurado;</li>
+ *   <li>Dedup em memória por {@code Message-ID} + dedup secundária via
+ *       {@code AlertaService} (hash SHA-256).</li>
+ * </ol>
+ * </p>
+ *
+ * <p>Em caso de credenciais ausentes ou falha de IMAP, retorna lista vazia
+ * e registra log; nunca lança exceção a partir de {@link #verificar()}.</p>
+ */
+@Component
+@Slf4j
+public class UrgenciaRenalGmailMonitor implements FonteMonitor {
+
+    private static final String FONTE = "GMAIL_URGENCIA_RENAL";
+    private static final String DESCRICAO = "Gmail — Urgência Renal";
+
+    private static final long ONE_DAY_MS = 24L * 60L * 60L * 1000L;
+    private static final int MAX_BODY_CHARS = 1500;
+    private static final Path STATE_FILE = Paths.get("ultimo_assunto.txt");
+
+    private static final java.util.regex.Pattern REMETENTE_RE =
+            java.util.regex.Pattern.compile("(?im)^\\s*Remetente\\s*:\\s*(.+)$");
+    private static final java.util.regex.Pattern ASSUNTO_RE =
+            java.util.regex.Pattern.compile("(?im)^\\s*Assunto\\s*:\\s*(.+)$");
+    private static final java.util.regex.Pattern CAIXA_RE =
+            java.util.regex.Pattern.compile("(?im)caixa de entrada da\\s+(.+?)\\s*:");
+    private static final java.util.regex.Pattern UNSUBSCRIBE_RE =
+            java.util.regex.Pattern.compile("(?is)\\s*If you want to unsubscribe.*$");
+
+    @Value("${gmail.enabled:true}")
+    private boolean enabled;
+
+    @Value("${gmail.imap.host:imap.gmail.com}")
+    private String imapHost;
+
+    @Value("${gmail.imap.port:993}")
+    private int imapPort;
+
+    @Value("${gmail.user:}")
+    private String user;
+
+    @Value("${gmail.app.password:}")
+    private String appPassword;
+
+    @Value("${gmail.subject.filter:Notificação de novo e-mail – Urgência Renal}")
+    private String subjectFilter;
+
+    /**
+     * Conjunto de Message-IDs já vistos nesta JVM. Funciona como guarda
+     * primária contra reprocessamento; a guarda secundária é o hash do
+     * AlertaService.
+     */
+    private final Set<String> seenMessageIds = Collections.synchronizedSet(new java.util.HashSet<>());
+
+    @Override
+    public String getNome() {
+        return FONTE;
+    }
+
+    @Override
+    public String getDescricao() {
+        return DESCRICAO;
+    }
+
+    @Override
+    public boolean isAtivo() {
+        return enabled;
+    }
+
+    @Override
+    public List<Alerta> verificar() {
+        List<Alerta> alertas = new ArrayList<>();
+
+        if (user == null || user.isBlank() || appPassword == null || appPassword.isBlank()) {
+            log.warn("Gmail monitor: credenciais ausentes (gmail.user / gmail.app.password); pulando ciclo.");
+            return alertas;
+        }
+
+        Properties props = new Properties();
+        props.put("mail.store.protocol", "imaps");
+        props.put("mail.imaps.host", imapHost);
+        props.put("mail.imaps.port", String.valueOf(imapPort));
+        props.put("mail.imaps.ssl.enable", "true");
+        props.put("mail.imaps.ssl.trust", imapHost);
+
+        Session session = Session.getInstance(props);
+
+        Store store = null;
+        Folder inbox = null;
+        try {
+            store = session.getStore("imaps");
+            store.connect(imapHost, imapPort, user, appPassword);
+
+            inbox = store.getFolder("INBOX");
+            inbox.open(Folder.READ_ONLY);
+
+            Date since = new Date(System.currentTimeMillis() - ONE_DAY_MS);
+            SearchTerm unread = new FlagTerm(new jakarta.mail.Flags(jakarta.mail.Flags.Flag.SEEN), false);
+            SearchTerm recent = new ReceivedDateTerm(ComparisonTerm.GE, since);
+            SearchTerm criteria = new AndTerm(unread, recent);
+
+            Message[] mensagens;
+            try {
+                mensagens = inbox.search(criteria);
+            } catch (Exception e) {
+                log.warn("Gmail monitor: busca IMAP falhou ({}); usando varredura completa", e.getMessage());
+                mensagens = inbox.getMessages();
+            }
+
+            String filtroNormalizado = normalizar(subjectFilter);
+            String ultimoAssunto = null;
+
+            for (Message msg : mensagens) {
+                try {
+                    String subject = msg.getSubject();
+                    if (subject == null || subject.isBlank()) {
+                        continue;
+                    }
+                    if (!normalizar(subject).contains(filtroNormalizado)) {
+                        continue;
+                    }
+
+                    String messageId = extrairMessageId(msg);
+                    if (messageId != null && !seenMessageIds.add(messageId)) {
+                        // já visto nesta JVM
+                        continue;
+                    }
+
+                    String corpoBruto = extrairCorpo(msg);
+                    String snippet = formatarParaTelegram(corpoBruto, subject);
+                    if (snippet.length() > MAX_BODY_CHARS) {
+                        snippet = snippet.substring(0, MAX_BODY_CHARS);
+                    }
+
+                    Alerta alerta = Alerta.builder()
+                            .titulo(subject.trim())
+                            .conteudo(snippet.trim())
+                            .fonte(FONTE)
+                            .nivel("CRITICO")
+                            .dataHora(LocalDateTime.now())
+                            .enviado(false)
+                            .build();
+                    alertas.add(alerta);
+                    ultimoAssunto = subject.trim();
+                } catch (Exception e) {
+                    log.warn("Gmail monitor: falha processando mensagem: {}", e.getMessage());
+                }
+            }
+
+            if (ultimoAssunto != null) {
+                persistirUltimoAssunto(ultimoAssunto);
+            }
+
+            if (alertas.isEmpty()) {
+                log.info("Gmail monitor: nenhum e-mail novo correspondente ao filtro '{}'.", subjectFilter);
+            } else {
+                log.info("Gmail monitor: {} novo(s) alerta(s) gerado(s).", alertas.size());
+            }
+        } catch (Exception e) {
+            log.warn("Gmail monitor: falha IMAP em {}:{} — {}", imapHost, imapPort, e.getMessage());
+        } finally {
+            if (inbox != null && inbox.isOpen()) {
+                try {
+                    inbox.close(false);
+                } catch (Exception e) {
+                    log.debug("Gmail monitor: erro ao fechar INBOX: {}", e.getMessage());
+                }
+            }
+            if (store != null && store.isConnected()) {
+                try {
+                    store.close();
+                } catch (Exception e) {
+                    log.debug("Gmail monitor: erro ao fechar Store: {}", e.getMessage());
+                }
+            }
+        }
+
+        return alertas;
+    }
+
+    /**
+     * Normaliza texto removendo diacríticos e convertendo para lowercase
+     * para tornar a comparação de assunto tolerante a acentos/caixa.
+     */
+    private String normalizar(String texto) {
+        if (texto == null) {
+            return "";
+        }
+        String nfd = Normalizer.normalize(texto, Normalizer.Form.NFD);
+        return nfd.replaceAll("\\p{InCombiningDiacriticalMarks}+", "")
+                .toLowerCase()
+                .trim();
+    }
+
+    /**
+     * Extrai o cabeçalho Message-ID; se não houver, devolve {@code null}
+     * (o que faz com que apenas a dedup do AlertaService atue).
+     */
+    private String extrairMessageId(Message msg) {
+        try {
+            String[] vals = msg.getHeader("Message-ID");
+            if (vals != null && vals.length > 0 && vals[0] != null && !vals[0].isBlank()) {
+                return vals[0].trim();
+            }
+        } catch (Exception e) {
+            log.debug("Gmail monitor: erro ao ler Message-ID: {}", e.getMessage());
+        }
+        return null;
+    }
+
+    /**
+     * Extrai um snippet de texto plano do corpo da mensagem. Para multipart
+     * percorre as partes em busca da primeira {@code text/plain}.
+     */
+    private String extrairCorpo(Message msg) {
+        try {
+            Object content = msg.getContent();
+            if (content instanceof String s) {
+                return s;
+            }
+            if (content instanceof Multipart mp) {
+                return extrairTextoMultipart(mp);
+            }
+        } catch (IOException | jakarta.mail.MessagingException e) {
+            log.debug("Gmail monitor: erro ao extrair corpo: {}", e.getMessage());
+        } catch (Exception e) {
+            log.debug("Gmail monitor: erro inesperado ao extrair corpo: {}", e.getMessage());
+        }
+        return null;
+    }
+
+    private String extrairTextoMultipart(Multipart mp) throws Exception {
+        for (int i = 0; i < mp.getCount(); i++) {
+            Part parte = mp.getBodyPart(i);
+            if (parte.isMimeType("text/plain")) {
+                Object c = parte.getContent();
+                if (c instanceof String s) {
+                    return s;
+                }
+                if (c instanceof InputStream is) {
+                    return new String(is.readAllBytes(), StandardCharsets.UTF_8);
+                }
+            } else if (parte.getContent() instanceof Multipart sub) {
+                String aninhado = extrairTextoMultipart(sub);
+                if (aninhado != null && !aninhado.isBlank()) {
+                    return aninhado;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Formata o corpo bruto do e-mail para Markdown do Telegram, extraindo
+     * Remetente / Assunto / Caixa quando o formato bate com o padrão da
+     * notificação "Urgência Renal". Caso o padrão não case, devolve o
+     * texto bruto limpo (sem rodapé de unsubscribe).
+     */
+    private String formatarParaTelegram(String corpoBruto, String subjectFallback) {
+        String limpo = corpoBruto == null ? "" : UNSUBSCRIBE_RE.matcher(corpoBruto).replaceAll("").trim();
+
+        String caixa = extrair(CAIXA_RE, limpo);
+        String remetente = extrair(REMETENTE_RE, limpo);
+        String assunto = extrair(ASSUNTO_RE, limpo);
+
+        if (remetente == null && assunto == null) {
+            if (limpo.isBlank()) {
+                return subjectFallback == null ? "" : subjectFallback;
+            }
+            return limpo;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        if (caixa != null) {
+            sb.append("📥 *Caixa:* ").append(escapeMarkdown(caixa)).append('\n');
+        }
+        if (remetente != null) {
+            sb.append("👤 *Remetente:* `").append(remetente.replace("`", "'")).append("`\n");
+        }
+        if (assunto != null) {
+            sb.append("📩 *Assunto:* ").append(escapeMarkdown(assunto)).append('\n');
+        }
+        return sb.toString().trim();
+    }
+
+    private String extrair(java.util.regex.Pattern p, String texto) {
+        if (texto == null || texto.isBlank()) {
+            return null;
+        }
+        java.util.regex.Matcher m = p.matcher(texto);
+        if (m.find()) {
+            String v = m.group(1).trim();
+            return v.isBlank() ? null : v;
+        }
+        return null;
+    }
+
+    /**
+     * Escapa caracteres reservados do Markdown V1 do Telegram em conteúdo
+     * dinâmico para evitar quebra de parsing (ex.: underscores em e-mails).
+     */
+    private String escapeMarkdown(String texto) {
+        if (texto == null) {
+            return "";
+        }
+        return texto.replace("_", "\\_")
+                .replace("*", "\\*")
+                .replace("`", "'")
+                .replace("[", "\\[");
+    }
+
+    /**
+     * Persiste o assunto mais recente em {@code ultimo_assunto.txt} para
+     * compatibilidade com CI / scripts legados.
+     */
+    private void persistirUltimoAssunto(String subject) {
+        try {
+            Files.writeString(STATE_FILE, subject, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            log.debug("Gmail monitor: não foi possível atualizar {}: {}", STATE_FILE, e.getMessage());
+        }
+    }
+}

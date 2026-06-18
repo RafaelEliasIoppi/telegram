@@ -16,6 +16,13 @@ services:
       - APP_USERNAME=admin
       - APP_PASSWORD=admin123
       - SPRING_PROFILES_ACTIVE=prod
+      - GMAIL_ENABLED=
+      - GMAIL_IMAP_HOST=
+      - GMAIL_IMAP_PORT=
+      - GMAIL_USER=
+      - GMAIL_APP_PASSWORD=
+      - GMAIL_SUBJECT_FILTER=
+      - GMAIL_FIXED_RATE=
     depends_on:
       db:
         condition: service_healthy

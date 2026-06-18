@@ -70,3 +70,14 @@ Enviar mensagens via formulário HTML.
 Enviar mensagens via requisição POST (/enviar).
 
 Disparar mensagens automáticas em horários definidos.
+
+---
+
+## 🆕 Atualizações Recentes
+
+Documentação detalhada das mudanças mais recentes do projeto:
+
+- [docs/CHANGELOG.md](docs/CHANGELOG.md) — Entrada de 2026-06-18: monitor Gmail Urgência Renal, painel aprimorado e novas variáveis de ambiente.
+- [docs/GMAIL_SETUP.md](docs/GMAIL_SETUP.md) — Passo a passo para ativar o monitor Gmail (2FA, App Password, variáveis e troubleshooting).
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — Deploy local e via Docker, tabela completa de variáveis, smoke-test e rollback.
+- [docs/UI_GUIDE.md](docs/UI_GUIDE.md) — Tour do novo painel de controle em `/dashboard` (cards, fontes, ações rápidas, alertas recentes).

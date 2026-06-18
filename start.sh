@@ -18,7 +18,7 @@ if [ ! -f "$JAR_PATH" ]; then
   mvn -B clean package
 fi
 
-if [ "$${1:-}" = "bg" ]; then
+if [ "${1:-}" = "bg" ]; then
   echo "Iniciando em background (logs em $ROOT_DIR/start.log)"
   nohup java -jar "$JAR_PATH" > "$ROOT_DIR/start.log" 2>&1 &
   echo $! > "$ROOT_DIR/start.pid"

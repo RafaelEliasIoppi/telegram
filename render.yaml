@@ -1,0 +1,73 @@
+databases:
+  - name: telegram-bot-db
+    plan: free
+    databaseName: botdb
+    user: botuser
+
+services:
+  - type: web
+    name: telegram-bot-hub
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /login
+    autoDeploy: true
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+
+      - key: PGHOST
+        fromDatabase:
+          name: telegram-bot-db
+          property: host
+      - key: PGPORT
+        fromDatabase:
+          name: telegram-bot-db
+          property: port
+      - key: PGDATABASE
+        fromDatabase:
+          name: telegram-bot-db
+          property: database
+      - key: PGUSER
+        fromDatabase:
+          name: telegram-bot-db
+          property: user
+      - key: PGPASSWORD
+        fromDatabase:
+          name: telegram-bot-db
+          property: password
+
+      - key: APP_USERNAME
+        sync: false
+      - key: APP_PASSWORD
+        sync: false
+
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_IDS
+        sync: false
+      - key: TELEGRAM_WEBHOOK_ENABLED
+        value: "false"
+      - key: TELEGRAM_WEBHOOK_URL
+        sync: false
+
+      - key: GMAIL_ENABLED
+        value: "true"
+      - key: GMAIL_IMAP_HOST
+        value: imap.gmail.com
+      - key: GMAIL_IMAP_PORT
+        value: "993"
+      - key: GMAIL_USER
+        sync: false
+      - key: GMAIL_APP_PASSWORD
+        sync: false
+      - key: GMAIL_SUBJECT_FILTER
+        value: "Notificação de novo e-mail – Urgência Renal"
+      - key: GMAIL_FIXED_RATE
+        value: "300000"
+
+      - key: DEFESACIVIL_ENABLED
+        value: "true"
+      - key: INMET_ENABLED
+        value: "true"

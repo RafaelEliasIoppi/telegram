@@ -12,7 +12,7 @@
     <link rel="stylesheet"
           href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
-        body { min-height: 100vh; display: flex; flex-direction: column; }
+        body { min-height: 100vh; display: flex; flex-direction: column; background-color: #f5f7fb; }
         main { flex: 1; }
         .nivel-CRITICO { color: #dc3545; font-weight: bold; }
         .nivel-AVISO   { color: #fd7e14; font-weight: bold; }
@@ -22,11 +22,36 @@
         .badge-INFO    { background-color: #0d6efd; color: #fff; }
         .footer { margin-top: auto; }
         .card-stat h2 { font-size: 2rem; margin: 0; }
+        .card-stat .stat-icon { font-size: 1.6rem; opacity: 0.85; }
         .truncate {
             max-width: 480px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+        }
+        .navbar .nav-link.active { color: #ffc107 !important; font-weight: 600; }
+        .source-row { transition: background-color 0.15s ease; }
+        .source-row:hover { background-color: #f8f9fa; }
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.4rem 0.9rem;
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            letter-spacing: 0.03em;
+        }
+        .status-pill.ok { background-color: #d1e7dd; color: #0a3622; }
+        .status-pill.warn { background-color: #f8d7da; color: #58151c; }
+        .quick-action {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            justify-content: flex-start;
+        }
+        .stat-accent {
+            border-left: 4px solid transparent;
         }
     </style>
 </head>
@@ -42,24 +67,33 @@
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="mainNavbar">
-            <ul class="navbar-nav me-auto">
+            <ul class="navbar-nav me-auto"
+                th:with="uri=${#httpServletRequest != null} ? ${#httpServletRequest.requestURI} : ''">
                 <li class="nav-item">
-                    <a class="nav-link" th:href="@{/dashboard}">
+                    <a class="nav-link"
+                       th:classappend="${#strings.startsWith(uri,'/dashboard')} ? 'active' : ''"
+                       th:href="@{/dashboard}">
                         <i class="bi bi-speedometer2"></i> Dashboard
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" th:href="@{/historico}">
+                    <a class="nav-link"
+                       th:classappend="${#strings.startsWith(uri,'/historico')} ? 'active' : ''"
+                       th:href="@{/historico}">
                         <i class="bi bi-clock-history"></i> Histórico
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" th:href="@{/chats}">
+                    <a class="nav-link"
+                       th:classappend="${#strings.startsWith(uri,'/chats')} ? 'active' : ''"
+                       th:href="@{/chats}">
                         <i class="bi bi-chat-dots"></i> Chats
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" th:href="@{/bot}">
+                    <a class="nav-link"
+                       th:classappend="${#strings.startsWith(uri,'/bot')} ? 'active' : ''"
+                       th:href="@{/bot}">
                         <i class="bi bi-gear"></i> Bot
                     </a>
                 </li>
@@ -87,9 +121,11 @@
     </div>
 </main>
 
-<footer class="footer py-3 bg-light text-center">
-    <span class="text-muted">
+<footer class="footer py-3 bg-light text-center border-top">
+    <span class="text-muted small">
         <i class="bi bi-robot"></i> Telegram Bot Hub
+        <span class="mx-2">•</span>
+        <span>v1.0</span>
     </span>
 </footer>
 

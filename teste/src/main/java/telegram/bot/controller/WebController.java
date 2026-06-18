@@ -2,9 +2,15 @@ package telegram.bot.controller;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -39,6 +45,15 @@ public class WebController {
     private final AlertaService alertaService;
     private final TelegramBotService telegramService;
     private final ChatConfigRepository chatConfigRepo;
+
+    @Value("${defesacivil.enabled:true}")
+    private boolean defesaCivilEnabled;
+
+    @Value("${inmet.enabled:true}")
+    private boolean inmetEnabled;
+
+    @Value("${gmail.enabled:false}")
+    private boolean gmailEnabled;
 
     @Autowired
     public WebController(AlertaService alertaService,
@@ -76,19 +91,87 @@ public class WebController {
         // Para a contagem "Hoje", busca uma janela maior:
         List<Alerta> recentes = alertaService.ultimosAlertas(200);
         LocalDateTime inicioHoje = LocalDate.now().atStartOfDay();
+        LocalDateTime inicio7Dias = LocalDate.now().minusDays(7).atStartOfDay();
         long alertasHoje = recentes.stream()
                 .filter(a -> a.getDataHora() != null && !a.getDataHora().isBefore(inicioHoje))
                 .count();
 
         long chatsAtivos = chats.stream().filter(ChatConfig::isAtivo).count();
 
-        model.addAttribute("pageTitle", "Dashboard");
+        // Última verificação = data/hora do alerta mais recente registrado
+        LocalDateTime ultimaVerificacao = recentes.stream()
+                .map(Alerta::getDataHora)
+                .filter(d -> d != null)
+                .max(Comparator.naturalOrder())
+                .orElse(null);
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+        String ultimaVerificacaoFmt = ultimaVerificacao != null
+                ? ultimaVerificacao.format(fmt)
+                : "—";
+
+        // Status operacional: ao menos uma fonte ativa
+        boolean operacional = defesaCivilEnabled || inmetEnabled || gmailEnabled;
+
+        // Contagem por fonte nos últimos 7 dias (in-memory)
+        Map<String, Long> contagemPorFonte = new LinkedHashMap<>();
+        for (Alerta a : recentes) {
+            if (a.getDataHora() == null || a.getDataHora().isBefore(inicio7Dias)) continue;
+            String f = a.getFonte() == null ? "?" : a.getFonte();
+            contagemPorFonte.merge(f, 1L, Long::sum);
+        }
+
+        // Fontes de monitoramento
+        List<Map<String, Object>> fontesMonitoramento = new ArrayList<>();
+        fontesMonitoramento.add(montarFonte(
+                "Defesa Civil RS",
+                "DEFESA_CIVIL_RS",
+                "bi-shield-exclamation",
+                defesaCivilEnabled,
+                "10 min",
+                contagemPorFonte.getOrDefault("DEFESA_CIVIL_RS", 0L)));
+        fontesMonitoramento.add(montarFonte(
+                "INMET",
+                "INMET",
+                "bi-cloud-rain-heavy",
+                inmetEnabled,
+                "30 min",
+                contagemPorFonte.getOrDefault("INMET", 0L)));
+        fontesMonitoramento.add(montarFonte(
+                "Gmail — Urgência Renal",
+                "GMAIL_URGENCIA_RENAL",
+                "bi-envelope-exclamation",
+                gmailEnabled,
+                "5 min",
+                contagemPorFonte.getOrDefault("GMAIL_URGENCIA_RENAL", 0L)));
+
+        model.addAttribute("pageTitle", "Painel de Controle");
         model.addAttribute("alertas", alertas);
         model.addAttribute("chats", chats);
         model.addAttribute("totalAlertas", recentes.size());
         model.addAttribute("alertasHoje", alertasHoje);
         model.addAttribute("chatsAtivos", chatsAtivos);
+        model.addAttribute("webhookStatus", "OK");
+        model.addAttribute("ultimaVerificacao", ultimaVerificacaoFmt);
+        model.addAttribute("operacional", operacional);
+        model.addAttribute("fontesMonitoramento", fontesMonitoramento);
+        model.addAttribute("serverTime", LocalDateTime.now().format(fmt));
         return "dashboard";
+    }
+
+    private Map<String, Object> montarFonte(String nome,
+                                            String codigo,
+                                            String icone,
+                                            boolean ativo,
+                                            String intervalo,
+                                            long alertas7Dias) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("nome", nome);
+        m.put("codigo", codigo);
+        m.put("icone", icone);
+        m.put("ativo", ativo);
+        m.put("intervalo", intervalo);
+        m.put("alertas7Dias", alertas7Dias);
+        return m;
     }
 
     // ------------------------------------------------------------------
