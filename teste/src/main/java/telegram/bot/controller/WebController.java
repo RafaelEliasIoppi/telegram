@@ -23,6 +23,7 @@ import telegram.bot.domain.ChatConfig;
 import telegram.bot.repository.ChatConfigRepository;
 import telegram.bot.service.AlertaService;
 import telegram.bot.service.bot.TelegramBotService;
+import telegram.bot.service.monitor.MonitorScheduler;
 
 /**
  * Controller principal da UI Web (Thymeleaf).
@@ -45,6 +46,7 @@ public class WebController {
     private final AlertaService alertaService;
     private final TelegramBotService telegramService;
     private final ChatConfigRepository chatConfigRepo;
+    private final MonitorScheduler monitorScheduler;
 
     @Value("${defesacivil.enabled:true}")
     private boolean defesaCivilEnabled;
@@ -58,10 +60,25 @@ public class WebController {
     @Autowired
     public WebController(AlertaService alertaService,
                          TelegramBotService telegramService,
-                         ChatConfigRepository chatConfigRepo) {
+                         ChatConfigRepository chatConfigRepo,
+                         MonitorScheduler monitorScheduler) {
         this.alertaService = alertaService;
         this.telegramService = telegramService;
         this.chatConfigRepo = chatConfigRepo;
+        this.monitorScheduler = monitorScheduler;
+    }
+
+    @PostMapping("/bot/verificar-agora")
+    public String verificarAgora(RedirectAttributes redirectAttributes) {
+        try {
+            monitorScheduler.executarVerificacao();
+            redirectAttributes.addFlashAttribute("flashSuccess",
+                    "Verificação manual disparada. Novos alertas aparecerão em segundos.");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("flashError",
+                    "Falha ao executar verificação: " + e.getMessage());
+        }
+        return "redirect:/dashboard";
     }
 
     // ------------------------------------------------------------------
