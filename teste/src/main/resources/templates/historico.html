@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{::content})}">
+<body>
+
+<div th:fragment="content">
+
+    <h1 class="mb-4">
+        <i class="bi bi-clock-history"></i> Histórico de Alertas
+    </h1>
+
+    <!-- Filtros (client-side, simples) -->
+    <div class="card mb-3 shadow-sm">
+        <div class="card-body">
+            <form class="row g-3" onsubmit="return false;">
+                <div class="col-md-5">
+                    <label for="filtroFonte" class="form-label">Fonte</label>
+                    <select id="filtroFonte" class="form-select" onchange="aplicarFiltros()">
+                        <option value="">Todas</option>
+                        <option value="DEFESA_CIVIL_RS">DEFESA_CIVIL_RS</option>
+                        <option value="INMET">INMET</option>
+                    </select>
+                </div>
+                <div class="col-md-5">
+                    <label for="filtroNivel" class="form-label">Nível</label>
+                    <select id="filtroNivel" class="form-select" onchange="aplicarFiltros()">
+                        <option value="">Todos</option>
+                        <option value="CRITICO">CRITICO</option>
+                        <option value="AVISO">AVISO</option>
+                        <option value="INFO">INFO</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="button" class="btn btn-outline-secondary w-100" onclick="limparFiltros()">
+                        <i class="bi bi-eraser"></i> Limpar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover mb-0" id="tabelaAlertas">
+                    <thead>
+                        <tr>
+                            <th>Nível</th>
+                            <th>Título</th>
+                            <th>Fonte</th>
+                            <th>Data/Hora</th>
+                            <th class="text-center">Enviado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:if="${#lists.isEmpty(alertas)}">
+                            <td colspan="5" class="text-center text-muted py-4">
+                                Nenhum alerta registrado.
+                            </td>
+                        </tr>
+                        <tr th:each="alerta : ${alertas}"
+                            th:attr="data-fonte=${alerta.fonte}, data-nivel=${alerta.nivel}">
+                            <td>
+                                <span class="badge"
+                                      th:classappend="'badge-' + ${alerta.nivel}"
+                                      th:text="${alerta.nivel}">INFO</span>
+                            </td>
+                            <td>
+                                <div class="truncate"
+                                     th:title="${alerta.titulo}"
+                                     th:text="${alerta.titulo}">
+                                    Título
+                                </div>
+                                <small class="text-muted"
+                                       th:if="${alerta.conteudo != null}"
+                                       th:text="${#strings.abbreviate(alerta.conteudo, 120)}">
+                                    Conteúdo
+                                </small>
+                            </td>
+                            <td>
+                                <small th:text="${alerta.fonte}">FONTE</small>
+                            </td>
+                            <td>
+                                <small th:text="${alerta.dataHora != null ? #temporals.format(alerta.dataHora, 'dd/MM/yyyy HH:mm') : '-'}">
+                                    01/01/2026 00:00
+                                </small>
+                            </td>
+                            <td class="text-center">
+                                <span th:if="${alerta.enviado}" class="text-success">
+                                    <i class="bi bi-check-circle-fill"></i>
+                                </span>
+                                <span th:unless="${alerta.enviado}" class="text-danger">
+                                    <i class="bi bi-x-circle-fill"></i>
+                                </span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer text-muted small">
+            Exibindo até 50 alertas mais recentes.
+        </div>
+    </div>
+
+    <script>
+        function aplicarFiltros() {
+            var fonte = document.getElementById('filtroFonte').value;
+            var nivel = document.getElementById('filtroNivel').value;
+            var linhas = document.querySelectorAll('#tabelaAlertas tbody tr[data-fonte]');
+            linhas.forEach(function (tr) {
+                var okFonte = !fonte || tr.dataset.fonte === fonte;
+                var okNivel = !nivel || tr.dataset.nivel === nivel;
+                tr.style.display = (okFonte && okNivel) ? '' : 'none';
+            });
+        }
+        function limparFiltros() {
+            document.getElementById('filtroFonte').value = '';
+            document.getElementById('filtroNivel').value = '';
+            aplicarFiltros();
+        }
+    </script>
+
+</div>
+
+</body>
+</html>
