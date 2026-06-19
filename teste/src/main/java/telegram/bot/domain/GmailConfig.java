@@ -1,5 +1,6 @@
 package telegram.bot.domain;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -21,6 +22,8 @@ public class GmailConfig {
 
     private boolean enabled;
 
+    // "user" é palavra reservada em SQL/H2; mapeia para coluna com nome seguro.
+    @Column(name = "gmail_user")
     private String user;
 
     private String appPassword;
