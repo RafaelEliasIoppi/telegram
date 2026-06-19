@@ -79,6 +79,9 @@ public class MonitorScheduler {
                 log.error("Erro no monitor {}: {}", monitor.getNome(), e.getMessage());
             }
         }
+        // Marca explícito de fim de ciclo: o silêncio depois disto é a app
+        // OCIOSA aguardando o próximo intervalo (não é travamento).
+        log.info("Verificação concluída — app ativa e ociosa até o próximo ciclo.");
     }
 
     /**
