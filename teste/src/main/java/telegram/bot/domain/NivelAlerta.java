@@ -10,4 +10,22 @@ public enum NivelAlerta {
             case CRITICO -> "🚨";
         };
     }
+
+    /** Rótulo amigável em caixa-alta para o cabeçalho do aviso. */
+    public String rotulo() {
+        return switch (this) {
+            case INFO -> "INFORMATIVO";
+            case AVISO -> "AVISO";
+            case CRITICO -> "CRÍTICO";
+        };
+    }
+
+    /** Bolinha colorida (semáforo de severidade) para a tag do rodapé. */
+    public String bolinha() {
+        return switch (this) {
+            case INFO -> "🔵";
+            case AVISO -> "🟠";
+            case CRITICO -> "🔴";
+        };
+    }
 }

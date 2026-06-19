@@ -97,24 +97,31 @@ public class MonitorScheduler {
                 ? ""
                 : alerta.getDataHora().format(FMT);
 
+        // Layout do aviso (Markdown V1 do Telegram):
+        //   {emoji} {NÍVEL} · {fonte}      ← cabeçalho de severidade
+        //   *{título}*                     ← título em negrito
+        //   {conteúdo}
+        //   ━━━━━━━━━━━━━━━                ← divisor
+        //   {bolinha} {nível}  ·  🕒 {data}
+        // Título e fonte são escapados (V1); o conteúdo NÃO é escapado aqui
+        // porque alguns monitores (ex.: Gmail) já produzem Markdown intencional.
         String mensagem = String.format("""
-                %s *%s*
+                %s *%s · %s*
+
+                *%s*
 
                 %s
 
-                📡 Fonte: %s
-                📅 %s
+                ━━━━━━━━━━━━━━━
+                %s _%s_  ·  🕒 %s
                 """,
                 nivel.emoji(),
-                // O título é texto puro vindo das fontes e é embrulhado em *...*;
-                // escapamos os caracteres reservados do Markdown V1 para não
-                // quebrar o parsing (ex.: '_' em assuntos de e-mail) e evitar
-                // HTTP 400 na API do Telegram. O conteúdo NÃO é escapado aqui
-                // porque alguns monitores (ex.: Gmail) já produzem Markdown
-                // intencional.
-                escapeMarkdownTitulo(nullSafe(alerta.getTitulo())),
+                nivel.rotulo(),
+                escapeMarkdown(descricaoFonte(alerta.getFonte())),
+                escapeMarkdown(nullSafe(alerta.getTitulo())),
                 nullSafe(alerta.getConteudo()),
-                descricaoFonte(alerta.getFonte()),
+                nivel.bolinha(),
+                nivel.rotulo().toLowerCase(),
                 dataFormatada
         );
 
@@ -198,9 +205,9 @@ public class MonitorScheduler {
 
     /**
      * Escapa caracteres reservados do Markdown V1 do Telegram em texto puro
-     * (usado no título, que é embrulhado em *...*).
+     * (usado no título e na fonte, que entram em contexto formatado).
      */
-    private String escapeMarkdownTitulo(String texto) {
+    private String escapeMarkdown(String texto) {
         if (texto == null || texto.isEmpty()) {
             return texto == null ? "" : texto;
         }
