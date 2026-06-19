@@ -132,21 +132,22 @@ public class MonitorScheduler {
         boolean algumEnviado = false;
         for (Long chatId : chatIds) {
             try {
-                // O texto do aviso é SEMPRE enviado completo como mensagem própria,
-                // sem depender da imagem. Isso evita que a legenda da foto trunque o
-                // texto (limite de 1024 chars do Telegram) ou que uma imagem inválida
-                // faça o alerta inteiro falhar.
-                telegramService.enviarMarkdown(chatId, mensagem);
-
-                // A imagem é opcional e best-effort: se falhar, o aviso já foi enviado.
+                // A imagem vem PRIMEIRO (acima do texto), como mensagem própria e
+                // best-effort: se a URL for inválida ou falhar, apenas registra log
+                // e segue — o aviso de texto nunca é perdido por causa da imagem.
                 if (temImagem) {
                     try {
                         telegramService.enviarFotoMarkdown(chatId, imagem, null);
                     } catch (Exception imgEx) {
-                        log.warn("Imagem do alerta não pôde ser enviada (texto já enviado) para chat {}: {}",
+                        log.warn("Imagem do alerta não pôde ser enviada para chat {}: {}",
                                 chatId, imgEx.getMessage());
                     }
                 }
+
+                // O texto do aviso é SEMPRE enviado completo como mensagem própria
+                // (logo após a imagem), sem depender dela. Assim a legenda da foto
+                // não trunca o texto (limite de 1024 chars do Telegram).
+                telegramService.enviarMarkdown(chatId, mensagem);
                 algumEnviado = true;
             } catch (Exception e) {
                 log.error("Erro ao enviar alerta para chat {}: {}", chatId, e.getMessage());
