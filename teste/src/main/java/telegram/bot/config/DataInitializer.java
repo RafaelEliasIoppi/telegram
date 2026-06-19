@@ -36,8 +36,18 @@ public class DataInitializer implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        seedChats();
-        seedFiltroPadrao();
+        // Seed é puramente local (H2/JPA), sem rede. Ainda assim envolvemos em
+        // try/catch para que uma eventual falha de persistência não aborte o boot.
+        try {
+            seedChats();
+        } catch (Exception e) {
+            log.warn("Falha ao semear chats iniciais (boot continua): {}", e.getMessage());
+        }
+        try {
+            seedFiltroPadrao();
+        } catch (Exception e) {
+            log.warn("Falha ao semear filtro padrão (boot continua): {}", e.getMessage());
+        }
     }
 
     private void seedChats() {
