@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -293,14 +295,24 @@ public class UrgenciaRenalGmailMonitor implements FonteMonitor {
     }
 
     /**
-     * Extrai um snippet de texto plano do corpo da mensagem. Para multipart
-     * percorre as partes em busca da primeira {@code text/plain}.
+     * Extrai o corpo da mensagem como TEXTO. Prefere {@code text/plain};
+     * quando o e-mail só tem {@code text/html}, converte o HTML em texto
+     * legível (evita enviar HTML cru/quebrado no Telegram).
      */
     private String extrairCorpo(Message msg) {
         try {
+            // Parte única text/plain
+            if (msg.isMimeType("text/plain") && msg.getContent() instanceof String s) {
+                return s;
+            }
+            // Parte única text/html -> converte para texto
+            if (msg.isMimeType("text/html") && msg.getContent() instanceof String s) {
+                return htmlParaTexto(s);
+            }
             Object content = msg.getContent();
             if (content instanceof String s) {
-                return s;
+                // Tipo não declarado: se parecer HTML, limpa as tags.
+                return pareceHtml(s) ? htmlParaTexto(s) : s;
             }
             if (content instanceof Multipart mp) {
                 return extrairTextoMultipart(mp);
@@ -313,10 +325,27 @@ public class UrgenciaRenalGmailMonitor implements FonteMonitor {
         return null;
     }
 
+    /**
+     * Procura primeiro uma parte {@code text/plain}; se não houver, usa a
+     * {@code text/html} convertida para texto. Percorre partes aninhadas.
+     */
     private String extrairTextoMultipart(Multipart mp) throws Exception {
+        String plain = buscarParte(mp, "text/plain");
+        if (plain != null && !plain.isBlank()) {
+            return plain;
+        }
+        String html = buscarParte(mp, "text/html");
+        if (html != null && !html.isBlank()) {
+            return htmlParaTexto(html);
+        }
+        return null;
+    }
+
+    /** Busca recursiva pela primeira parte do MIME informado (texto cru). */
+    private String buscarParte(Multipart mp, String mimeType) throws Exception {
         for (int i = 0; i < mp.getCount(); i++) {
             Part parte = mp.getBodyPart(i);
-            if (parte.isMimeType("text/plain")) {
+            if (parte.isMimeType(mimeType)) {
                 Object c = parte.getContent();
                 if (c instanceof String s) {
                     return s;
@@ -324,14 +353,47 @@ public class UrgenciaRenalGmailMonitor implements FonteMonitor {
                 if (c instanceof InputStream is) {
                     return new String(is.readAllBytes(), StandardCharsets.UTF_8);
                 }
-            } else if (parte.getContent() instanceof Multipart sub) {
-                String aninhado = extrairTextoMultipart(sub);
+            } else if (parte.isMimeType("multipart/*") && parte.getContent() instanceof Multipart sub) {
+                String aninhado = buscarParte(sub, mimeType);
                 if (aninhado != null && !aninhado.isBlank()) {
                     return aninhado;
                 }
             }
         }
         return null;
+    }
+
+    /** Heurística simples para detectar conteúdo HTML em corpo sem MIME claro. */
+    private boolean pareceHtml(String s) {
+        if (s == null) return false;
+        String low = s.toLowerCase();
+        return low.contains("<html") || low.contains("<body") || low.contains("<div")
+                || low.contains("<table") || low.contains("<p>") || low.contains("<br");
+    }
+
+    /**
+     * Converte HTML em texto legível para o Telegram: preserva quebras de
+     * linha de blocos comuns (br, p, div, tr, li, headings) e remove o resto
+     * das tags. Em caso de erro, faz um strip básico de tags.
+     */
+    private String htmlParaTexto(String html) {
+        if (html == null || html.isBlank()) {
+            return "";
+        }
+        try {
+            Document doc = Jsoup.parse(html);
+            doc.outputSettings(new Document.OutputSettings().prettyPrint(false));
+            doc.select("br").append("[[BR]]");
+            doc.select("p, div, tr, li, h1, h2, h3, h4, h5, h6").prepend("[[BR]]");
+            String texto = doc.text().replace("[[BR]]", "\n");
+            // Normaliza espaços/quebras excessivas.
+            texto = texto.replaceAll("[ \\t]+\n", "\n")
+                    .replaceAll("\n{3,}", "\n\n")
+                    .trim();
+            return texto;
+        } catch (Exception e) {
+            return html.replaceAll("(?s)<[^>]+>", " ").replaceAll("\\s+", " ").trim();
+        }
     }
 
     /**
