@@ -11,6 +11,13 @@ APP_DIR="$ROOT_DIR/teste"
 JAR_NAME="teste-0.0.1-SNAPSHOT.jar"
 JAR_PATH="$APP_DIR/target/$JAR_NAME"
 
+PORT=2500
+
+if [ -n "${CODESPACE_NAME:-}" ]; then
+  echo "Codespace detectado: $CODESPACE_NAME"
+  echo "Painel web: https://${CODESPACE_NAME}-${PORT}.app.github.dev"
+fi
+
 cd "$APP_DIR"
 
 if [ ! -f "$JAR_PATH" ]; then
@@ -20,10 +27,10 @@ fi
 
 if [ "${1:-}" = "bg" ]; then
   echo "Iniciando em background (logs em $ROOT_DIR/start.log)"
-  nohup java -jar "$JAR_PATH" > "$ROOT_DIR/start.log" 2>&1 &
+  nohup java -Duser.timezone=America/Sao_Paulo -jar "$JAR_PATH" > "$ROOT_DIR/start.log" 2>&1 &
   echo $! > "$ROOT_DIR/start.pid"
   echo "PID salvo em $ROOT_DIR/start.pid"
 else
   echo "Iniciando aplicação (foreground)..."
-  exec java -jar "$JAR_PATH"
+  exec java -Duser.timezone=America/Sao_Paulo -jar "$JAR_PATH"
 fi

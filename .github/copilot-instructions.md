@@ -23,7 +23,7 @@ Este é um bot Telegram construído com Spring Boot 3+ que envia mensagens autom
 ```properties
 telegram.bot.token=<BOT_TOKEN>  # Obtido via @BotFather
 telegram.chat.id=<CHAT_ID>      # Obtido via /getUpdates
-server.port=3000
+server.port=2500
 ```
 
 Para obter `chat.id`: envie uma mensagem ao bot e acesse `https://api.telegram.org/bot<TOKEN>/getUpdates`
@@ -35,7 +35,7 @@ Para obter `chat.id`: envie uma mensagem ao bot e acesse `https://api.telegram.o
 mvn clean install
 mvn spring-boot:run
 
-# Acesso: http://localhost:3000/
+# Acesso: http://localhost:2500/
 ```
 
 **⚠️ Problema Conhecido**: DefesaCivilMonitor requer dependência JSoup que está FALTANDO no pom.xml. Para compilar:

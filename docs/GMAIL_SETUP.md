@@ -96,7 +96,7 @@ docker compose up -d --build
 
 ## 6. Verificar funcionamento
 
-1. Acesse [http://localhost:3000/login](http://localhost:3000/login) e entre com `APP_USERNAME` / `APP_PASSWORD`.
+1. Acesse [http://localhost:2500/login](http://localhost:2500/login) e entre com `APP_USERNAME` / `APP_PASSWORD`.
 2. Abra o painel **Dashboard** (`/dashboard`).
 3. No card **Fontes de Monitoramento**, a linha **Gmail — Urgência Renal** deve aparecer como **ativo**.
 4. Envie um e-mail de teste para `GMAIL_USER` com o assunto exato `Notificação de novo e-mail – Urgência Renal`.

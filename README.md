@@ -52,7 +52,7 @@ mvn spring-boot:run
 Acesse no navegador:
 
 Código
-http://localhost:3000/
+http://localhost:2500/
 📄 Estrutura do projeto
 Código
 src/main/java/telegram/teste/

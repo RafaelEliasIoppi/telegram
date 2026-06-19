@@ -2,7 +2,7 @@
 
 > **Antes** o painel era um formulário simples para enviar mensagens manuais e ver um histórico bruto. **Agora** o `/dashboard` é uma central operacional: cartões com estatísticas em tempo real, status de cada fonte de monitoramento, ações rápidas e a lista dos alertas recentes. Você passa a ver, na mesma tela, "o que está ligado", "o que aconteceu nas últimas horas" e "o que posso disparar agora".
 
-Acesse: [http://localhost:3000/dashboard](http://localhost:3000/dashboard) (após login em `/login`).
+Acesse: [http://localhost:2500/dashboard](http://localhost:2500/dashboard) (após login em `/login`).
 
 ---
 

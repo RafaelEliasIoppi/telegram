@@ -138,11 +138,22 @@ public class MonitorScheduler {
                 dataFormatada
         );
 
+        List<String> partes = new java.util.ArrayList<>();
         if (mensagem.length() > LIMITE_TELEGRAM) {
-            mensagem = mensagem.substring(0, LIMITE_TELEGRAM - 6);
-            // Evita cortar no meio de uma sequência de escape ('\\*' -> '\\'),
-            // o que deixaria uma barra solta e quebraria o Markdown.
-            mensagem = removerEscapeIncompleto(mensagem) + "...";
+            String cabecalho = mensagem.substring(0, mensagem.indexOf("\n", mensagem.indexOf("\n") + 1) + 1);
+            String restante = mensagem.substring(cabecalho.length());
+            String[] words = restante.split("(?<=\n)");
+            StringBuilder parte = new StringBuilder(cabecalho);
+            for (String bloco : words) {
+                if (parte.length() + bloco.length() > LIMITE_TELEGRAM - 30) {
+                    partes.add(parte + "\n📎 continua...");
+                    parte = new StringBuilder(cabecalho);
+                }
+                parte.append(bloco);
+            }
+            partes.add(parte.toString());
+        } else {
+            partes.add(mensagem);
         }
 
         String imagem = alerta.getImagemUrl();
@@ -152,9 +163,6 @@ public class MonitorScheduler {
         boolean algumEnviado = false;
         for (Long chatId : chatIds) {
             try {
-                // A imagem vem PRIMEIRO (acima do texto), como mensagem própria e
-                // best-effort: se a URL for inválida ou falhar, apenas registra log
-                // e segue — o aviso de texto nunca é perdido por causa da imagem.
                 if (temImagem) {
                     try {
                         telegramService.enviarFotoMarkdown(chatId, imagem, null);
@@ -163,11 +171,13 @@ public class MonitorScheduler {
                                 chatId, imgEx.getMessage());
                     }
                 }
-
-                // O texto do aviso é SEMPRE enviado completo como mensagem própria
-                // (logo após a imagem), sem depender dela. Assim a legenda da foto
-                // não trunca o texto (limite de 1024 chars do Telegram).
-                telegramService.enviarMarkdown(chatId, mensagem);
+                for (int i = 0; i < partes.size(); i++) {
+                    String texto = partes.get(i);
+                    if (partes.size() > 1) {
+                        texto += "\n📎 Parte " + (i + 1) + "/" + partes.size();
+                    }
+                    telegramService.enviarMarkdown(chatId, texto);
+                }
                 algumEnviado = true;
             } catch (Exception e) {
                 log.error("Erro ao enviar alerta para chat {}: {}", chatId, e.getMessage());

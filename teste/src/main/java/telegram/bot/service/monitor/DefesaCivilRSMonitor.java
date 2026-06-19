@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -39,6 +41,7 @@ public class DefesaCivilRSMonitor implements FonteMonitor {
 
     private static final int TIMEOUT_MS = 15000;
     private static final String USER_AGENT = "Mozilla/5.0";
+    private static final int MAX_SEEN = 5000;
 
     private static final List<String> HEADLINE_SELECTORS = List.of(
             "h1", "h2", "h3",
@@ -53,6 +56,8 @@ public class DefesaCivilRSMonitor implements FonteMonitor {
 
     private static final List<String> NIVEL_CRITICO = List.of("crítico", "critico", "emergência", "emergencia", "perigo");
     private static final List<String> NIVEL_AVISO = List.of("alerta", "aviso", "atenção", "atencao");
+
+    private final Set<String> seen = Collections.synchronizedSet(new HashSet<>());
 
     @Value("${defesacivil.url:https://www.defesacivil.rs.gov.br/}")
     private String url;
@@ -96,11 +101,15 @@ public class DefesaCivilRSMonitor implements FonteMonitor {
             }
         }
 
+        if (seen.size() > MAX_SEEN) {
+            seen.clear();
+        }
         List<Alerta> alertas = new ArrayList<>();
         String imagemPagina = pagina != null
                 ? ImagemExtractor.extrairDeHtml(pagina, url)
                 : extrairImagemPagina();
         for (String texto : textos) {
+            if (!seen.add(texto)) continue;
             Alerta a = montarAlerta(texto);
             if (imagemPagina != null) a.setImagemUrl(imagemPagina);
             alertas.add(a);

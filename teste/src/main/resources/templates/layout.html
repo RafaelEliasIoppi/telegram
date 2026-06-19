@@ -80,8 +80,13 @@
         .navbar .nav-link.active { color: #ffc107 !important; font-weight: 600; }
         .navbar .nav-link { transition: color 0.15s ease; }
 
-        .source-row { transition: background-color 0.15s ease; }
+        .source-row { transition: background-color 0.15s ease; gap: 0.5rem; }
         .source-row:hover { background-color: #f8f9fa; }
+        .source-row { padding-left: 1.25rem; padding-right: 1.25rem; }
+        .source-row .badge { font-size: 0.65rem; padding: 0.2em 0.4em; }
+        .source-row small.text-muted { font-size: 0.65rem; white-space: nowrap; }
+        .source-info { min-width: 0; flex: 1 1 auto; overflow: hidden; }
+        .source-meta { gap: 0.25rem; flex-shrink: 0; }
 
         .status-pill {
             display: inline-flex;

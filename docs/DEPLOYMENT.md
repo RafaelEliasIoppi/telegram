@@ -34,7 +34,7 @@ APP_PASSWORD=admin123
 
 O `start.sh` faz `mvn clean package` se não houver `target/teste-0.0.1-SNAPSHOT.jar` e depois roda `java -jar`.
 
-Acesse [http://localhost:3000/login](http://localhost:3000/login).
+Acesse [http://localhost:2500/login](http://localhost:2500/login).
 
 ---
 
@@ -142,7 +142,7 @@ curl -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook" \
 
 ## 4. Smoke-test pós-deploy
 
-1. **Login** — `curl -i http://localhost:3000/login` deve retornar 200.
+1. **Login** — `curl -i http://localhost:2500/login` deve retornar 200.
 2. **Autenticar** no navegador com `APP_USERNAME` / `APP_PASSWORD` e abrir `/dashboard`.
 3. **Painel "Fontes de Monitoramento"** — verifique que cada monitor habilitado aparece como **ativo**:
    - Defesa Civil RS
