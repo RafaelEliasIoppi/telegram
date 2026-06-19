@@ -20,7 +20,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import telegram.bot.domain.FiltroAssunto;
+import telegram.bot.domain.GmailConfig;
 import telegram.bot.repository.FiltroAssuntoRepository;
+import telegram.bot.service.GmailConfigService;
 
 import jakarta.mail.Folder;
 import jakarta.mail.Message;
@@ -76,26 +78,14 @@ public class UrgenciaRenalGmailMonitor implements FonteMonitor {
     private static final java.util.regex.Pattern UNSUBSCRIBE_RE =
             java.util.regex.Pattern.compile("(?is)\\s*If you want to unsubscribe.*$");
 
-    @Value("${gmail.enabled:true}")
-    private boolean enabled;
-
-    @Value("${gmail.imap.host:imap.gmail.com}")
-    private String imapHost;
-
-    @Value("${gmail.imap.port:993}")
-    private int imapPort;
-
-    @Value("${gmail.user:}")
-    private String user;
-
-    @Value("${gmail.app.password:}")
-    private String appPassword;
-
     @Value("${gmail.subject.filter:Notificação de novo e-mail – Urgência Renal}")
     private String subjectFilter;
 
     @Autowired(required = false)
     private FiltroAssuntoRepository filtroRepo;
+
+    @Autowired(required = false)
+    private GmailConfigService gmailConfigService;
 
     /**
      * Conjunto de Message-IDs já vistos nesta JVM. Funciona como guarda
@@ -116,15 +106,24 @@ public class UrgenciaRenalGmailMonitor implements FonteMonitor {
 
     @Override
     public boolean isAtivo() {
-        return enabled;
+        GmailConfig cfg = gmailConfigService != null ? gmailConfigService.getConfig() : null;
+        if (cfg != null) return cfg.isEnabled();
+        return false;
     }
 
     @Override
     public List<Alerta> verificar() {
         List<Alerta> alertas = new ArrayList<>();
 
+        GmailConfig cfg = gmailConfigService != null ? gmailConfigService.getConfig() : null;
+
+        String user = cfg != null ? cfg.getUser() : null;
+        String appPassword = cfg != null ? cfg.getAppPassword() : null;
+        String imapHost = cfg != null ? cfg.getImapHost() : "imap.gmail.com";
+        int imapPort = cfg != null ? cfg.getImapPort() : 993;
+
         if (user == null || user.isBlank() || appPassword == null || appPassword.isBlank()) {
-            log.warn("Gmail monitor: credenciais ausentes (gmail.user / gmail.app.password); pulando ciclo.");
+            log.warn("Gmail monitor: credenciais ausentes; configure em /gmail ou via env vars.");
             return alertas;
         }
 
@@ -388,7 +387,8 @@ public class UrgenciaRenalGmailMonitor implements FonteMonitor {
         if (texto == null) {
             return "";
         }
-        return texto.replace("_", "\\_")
+        return texto.replace("\\", "\\\\")
+                .replace("_", "\\_")
                 .replace("*", "\\*")
                 .replace("`", "'")
                 .replace("[", "\\[");

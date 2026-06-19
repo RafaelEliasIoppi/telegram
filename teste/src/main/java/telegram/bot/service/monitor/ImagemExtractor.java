@@ -92,10 +92,11 @@ public final class ImagemExtractor {
         if (lower.contains("data:image")) return false;
         if (lower.endsWith(".svg")) return false;
         if (!lower.startsWith("http")) return false;
-        return lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".png")
-                || lower.endsWith(".webp") || lower.contains(".jpg?") || lower.contains(".jpeg?")
-                || lower.contains(".png?") || lower.contains(".webp?")
-                || lower.contains("/image") || lower.contains("photo");
+        // Exige extensão de imagem real (com ou sem query string). As tags
+        // confiáveis og:image / twitter:image são tratadas antes desta checagem;
+        // aqui evitamos capturar logos, sprites e pixels de rastreamento que
+        // só contêm "photo"/"/image" no caminho.
+        return lower.matches(".*\\.(jpe?g|png|webp)(\\?.*)?$");
     }
 
     private static String absoluta(String url, String base) {

@@ -59,6 +59,27 @@ public class InmetMonitor implements FonteMonitor {
             "bahia", "pernambuco", "ceará", "ceara", "amazonas", "pará", "para"
     );
 
+    /**
+     * Padrões pré-compilados para as siglas de UF (2 letras), evitando
+     * recompilar regex a cada elemento da página. Nomes de estado por extenso
+     * ficam em {@link #UF_NOMES} (busca simples por substring).
+     */
+    private static final List<java.util.regex.Pattern> UF_SIGLA_PATTERNS;
+    private static final List<String> UF_NOMES;
+    static {
+        List<java.util.regex.Pattern> siglas = new ArrayList<>();
+        List<String> nomes = new ArrayList<>();
+        for (String token : UF_OU_ESTADO) {
+            if (token.length() == 2) {
+                siglas.add(java.util.regex.Pattern.compile("(^|[^a-zA-Z])" + token + "([^a-zA-Z]|$)"));
+            } else {
+                nomes.add(token);
+            }
+        }
+        UF_SIGLA_PATTERNS = List.copyOf(siglas);
+        UF_NOMES = List.copyOf(nomes);
+    }
+
     private static final List<String> NIVEL_CRITICO = List.of("vermelho", "perigo extremo", "extremo");
     private static final List<String> NIVEL_AVISO = List.of("laranja", "perigo");
     private static final List<String> NIVEL_INFO = List.of("amarelo", "atenção", "atencao");
@@ -139,15 +160,16 @@ public class InmetMonitor implements FonteMonitor {
         if (PALAVRAS_METEO.stream().anyMatch(lower::contains)) {
             return true;
         }
-        // Verifica UF: usa busca por token (palavra inteira) para evitar falsos positivos com 2 letras
-        for (String token : UF_OU_ESTADO) {
-            if (token.length() == 2) {
-                // Sigla — checa cercada por separador ou limite
-                String padrao = "(^|[^a-zA-Z])" + token + "([^a-zA-Z]|$)";
-                if (texto.matches(".*" + padrao + ".*")) {
-                    return true;
-                }
-            } else if (lower.contains(token)) {
+        // Siglas de UF: padrão pré-compilado, cercado por separador/limite
+        // para evitar falsos positivos com 2 letras.
+        for (java.util.regex.Pattern p : UF_SIGLA_PATTERNS) {
+            if (p.matcher(texto).find()) {
+                return true;
+            }
+        }
+        // Nomes de estado por extenso: busca simples (case-insensitive via lower).
+        for (String nome : UF_NOMES) {
+            if (lower.contains(nome)) {
                 return true;
             }
         }

@@ -5,9 +5,12 @@
 
 <div th:fragment="content">
 
-    <h1 class="mb-4">
+    <h1 class="mb-2">
         <i class="bi bi-gear"></i> Gerenciamento do Bot
     </h1>
+    <p class="text-muted mb-4">
+        Status da conexão, webhook e comandos suportados pelo bot do Telegram.
+    </p>
 
     <div th:if="${sucesso}" class="alert alert-success alert-dismissible fade show" role="alert">
         <i class="bi bi-check-circle"></i> <span th:text="${sucesso}"></span>

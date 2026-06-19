@@ -22,10 +22,13 @@ import telegram.bot.domain.Alerta;
 import telegram.bot.domain.ChatConfig;
 import telegram.bot.domain.FiltroAssunto;
 import telegram.bot.domain.FonteCustomizada;
+import telegram.bot.domain.GmailConfig;
 import telegram.bot.repository.ChatConfigRepository;
 import telegram.bot.repository.FiltroAssuntoRepository;
 import telegram.bot.repository.FonteCustomizadaRepository;
+import telegram.bot.repository.GmailConfigRepository;
 import telegram.bot.service.AlertaService;
+import telegram.bot.service.GmailConfigService;
 import telegram.bot.service.bot.TelegramBotService;
 import telegram.bot.service.monitor.MonitorScheduler;
 
@@ -53,6 +56,7 @@ public class WebController {
     private final MonitorScheduler monitorScheduler;
     private final FiltroAssuntoRepository filtroRepo;
     private final FonteCustomizadaRepository fonteRepo;
+    private final GmailConfigService gmailConfigService;
 
     @Value("${defesacivil.enabled:true}")
     private boolean defesaCivilEnabled;
@@ -60,25 +64,21 @@ public class WebController {
     @Value("${inmet.enabled:true}")
     private boolean inmetEnabled;
 
-    @Value("${gmail.enabled:false}")
-    private boolean gmailEnabled;
-
-    @Value("${monitor.fixedRate:${defesacivil.fixedRate:1800000}}")
-    private long monitorFixedRateMs;
-
     @Autowired
     public WebController(AlertaService alertaService,
                          TelegramBotService telegramService,
                          ChatConfigRepository chatConfigRepo,
                          MonitorScheduler monitorScheduler,
                          FiltroAssuntoRepository filtroRepo,
-                         FonteCustomizadaRepository fonteRepo) {
+                         FonteCustomizadaRepository fonteRepo,
+                         GmailConfigService gmailConfigService) {
         this.alertaService = alertaService;
         this.telegramService = telegramService;
         this.chatConfigRepo = chatConfigRepo;
         this.monitorScheduler = monitorScheduler;
         this.filtroRepo = filtroRepo;
         this.fonteRepo = fonteRepo;
+        this.gmailConfigService = gmailConfigService;
     }
 
     @PostMapping("/bot/verificar-agora")
@@ -139,8 +139,10 @@ public class WebController {
                 ? ultimaVerificacao.format(fmt)
                 : "—";
 
-        // Status operacional: ao menos uma fonte ativa
-        boolean operacional = defesaCivilEnabled || inmetEnabled || gmailEnabled;
+        // Status Gmail e operacional
+        GmailConfig gmailCfg = gmailConfigService.getConfig();
+        boolean gmailAtivo = gmailCfg != null && gmailCfg.isEnabled();
+        boolean operacional = defesaCivilEnabled || inmetEnabled || gmailAtivo;
 
         // Contagem por fonte nos últimos 7 dias (in-memory)
         Map<String, Long> contagemPorFonte = new LinkedHashMap<>();
@@ -150,8 +152,9 @@ public class WebController {
             contagemPorFonte.merge(f, 1L, Long::sum);
         }
 
-        // Fontes de monitoramento
-        String intervaloGlobal = formatarIntervalo(monitorFixedRateMs);
+        // Fontes de monitoramento — intervalo efetivo (configurável na UI e
+        // aplicado dinamicamente pelo agendador), não o valor estático de boot.
+        String intervaloGlobal = formatarIntervalo(gmailConfigService.getIntervaloVerificacaoMs());
         List<Map<String, Object>> fontesMonitoramento = new ArrayList<>();
         fontesMonitoramento.add(montarFonte(
                 "Defesa Civil RS", "DEFESA_CIVIL_RS", "bi-shield-exclamation",
@@ -163,7 +166,7 @@ public class WebController {
                 contagemPorFonte.getOrDefault("INMET", 0L)));
         fontesMonitoramento.add(montarFonte(
                 "Gmail — Urgência Renal", "GMAIL_URGENCIA_RENAL", "bi-envelope-exclamation",
-                gmailEnabled, intervaloGlobal,
+                gmailAtivo, intervaloGlobal,
                 contagemPorFonte.getOrDefault("GMAIL_URGENCIA_RENAL", 0L)));
         try {
             for (FonteCustomizada fc : fonteRepo.findAll()) {
@@ -389,6 +392,40 @@ public class WebController {
             ra.addFlashAttribute("sucesso", "Filtro '" + f.getNome() + "' removido.");
         }, () -> ra.addFlashAttribute("erro", "Filtro não encontrado."));
         return "redirect:/filtros";
+    }
+
+    // ------------------------------------------------------------------
+    // Gmail
+    // ------------------------------------------------------------------
+
+    @GetMapping("/gmail")
+    public String gmail(Model model) {
+        GmailConfig cfg = gmailConfigService.getConfig();
+        if (cfg == null) {
+            cfg = GmailConfig.builder().id(1L).enabled(false).imapHost("imap.gmail.com").imapPort(993).fixedRate(300000L).build();
+        }
+        model.addAttribute("pageTitle", "Configuração Gmail");
+        model.addAttribute("gmail", cfg);
+        return "gmail";
+    }
+
+    @PostMapping("/gmail")
+    public String salvarGmail(GmailConfig form,
+                              @org.springframework.web.bind.annotation.RequestParam(required = false) Boolean enabled,
+                              RedirectAttributes ra) {
+        GmailConfig cfg = gmailConfigService.getConfig();
+        if (cfg == null) cfg = GmailConfig.builder().id(1L).build();
+        cfg.setEnabled(enabled != null && enabled);
+        cfg.setUser(form.getUser());
+        if (form.getAppPassword() != null && !form.getAppPassword().isBlank()) {
+            cfg.setAppPassword(form.getAppPassword());
+        }
+        cfg.setImapHost(form.getImapHost() != null && !form.getImapHost().isBlank() ? form.getImapHost() : "imap.gmail.com");
+        cfg.setImapPort(form.getImapPort() > 0 ? form.getImapPort() : 993);
+        cfg.setFixedRate(form.getFixedRate() > 0 ? form.getFixedRate() : 300000L);
+        gmailConfigService.saveConfig(cfg);
+        ra.addFlashAttribute("sucesso", "Configuração Gmail salva com sucesso.");
+        return "redirect:/gmail";
     }
 
     // ------------------------------------------------------------------

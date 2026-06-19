@@ -42,6 +42,7 @@ public class AlertaService {
      */
     public List<Long> chatIdsParaAlerta(Alerta alerta) {
         return chatConfigRepo.findByAtivoTrue().stream()
+                .filter(c -> c.getChatId() != null)
                 .filter(c -> c.aceitaFonte(alerta.getFonte()))
                 .filter(c -> c.aceitaNivel(alerta.getNivel()))
                 .map(ChatConfig::getChatId)

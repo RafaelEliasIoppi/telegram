@@ -12,26 +12,77 @@
     <link rel="stylesheet"
           href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
-        body { min-height: 100vh; display: flex; flex-direction: column; background-color: #f5f7fb; }
+        :root {
+            --bg-app: #f5f7fb;
+            --nivel-critico: #dc3545;
+            --nivel-aviso: #c25e00;   /* laranja escurecido p/ contraste com texto branco */
+            --nivel-info: #0d6efd;
+        }
+        body { min-height: 100vh; display: flex; flex-direction: column; background-color: var(--bg-app); }
         main { flex: 1; }
-        .nivel-CRITICO { color: #dc3545; font-weight: bold; }
-        .nivel-AVISO   { color: #fd7e14; font-weight: bold; }
-        .nivel-INFO    { color: #0d6efd; }
-        .badge-CRITICO { background-color: #dc3545; color: #fff; }
-        .badge-AVISO   { background-color: #fd7e14; color: #fff; }
-        .badge-INFO    { background-color: #0d6efd; color: #fff; }
+
+        /* Cabeçalho de página consistente */
+        main > div h1 { font-size: 1.75rem; font-weight: 600; }
+        main > div h1 .bi { color: #495057; }
+
+        /* Cores de texto por nível */
+        .nivel-CRITICO { color: var(--nivel-critico); font-weight: 600; }
+        .nivel-AVISO   { color: var(--nivel-aviso);   font-weight: 600; }
+        .nivel-INFO    { color: var(--nivel-info);    font-weight: 600; }
+
+        /* Badges de nível — contraste AA com texto branco */
+        .badge-CRITICO { background-color: var(--nivel-critico); color: #fff; }
+        .badge-AVISO   { background-color: var(--nivel-aviso);   color: #fff; }
+        .badge-INFO    { background-color: var(--nivel-info);    color: #fff; }
+        .badge-CRITICO, .badge-AVISO, .badge-INFO {
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            padding: 0.35em 0.6em;
+        }
+
         .footer { margin-top: auto; }
+
         .card-stat h2 { font-size: 2rem; margin: 0; }
         .card-stat .stat-icon { font-size: 1.6rem; opacity: 0.85; }
+
+        /* Cards: leve elevação no hover para os clicáveis/principais */
+        .card { border-color: rgba(0,0,0,.075); }
+        .card.shadow-sm { transition: box-shadow 0.15s ease, transform 0.15s ease; }
+        .card.shadow-sm:hover { box-shadow: 0 0.35rem 0.9rem rgba(0,0,0,.10) !important; }
+
+        /* Cabeçalhos de card brancos com borda discreta */
+        .card-header.bg-white { border-bottom: 1px solid rgba(0,0,0,.075); }
+
+        /* Tabelas mais legíveis */
+        .table thead th {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            color: #6c757d;
+            border-bottom-width: 2px;
+        }
+        .table > :not(caption) > * > * { vertical-align: middle; }
+
+        /* Truncate responsivo — não estoura em telas pequenas */
         .truncate {
             max-width: 480px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
+        @media (max-width: 992px) {
+            .truncate { max-width: 320px; }
+        }
+        @media (max-width: 576px) {
+            .truncate { max-width: 180px; }
+        }
+
         .navbar .nav-link.active { color: #ffc107 !important; font-weight: 600; }
+        .navbar .nav-link { transition: color 0.15s ease; }
+
         .source-row { transition: background-color 0.15s ease; }
         .source-row:hover { background-color: #f8f9fa; }
+
         .status-pill {
             display: inline-flex;
             align-items: center;
@@ -44,6 +95,7 @@
         }
         .status-pill.ok { background-color: #d1e7dd; color: #0a3622; }
         .status-pill.warn { background-color: #f8d7da; color: #58151c; }
+
         .quick-action {
             display: flex;
             align-items: center;
@@ -53,6 +105,12 @@
         .stat-accent {
             border-left: 4px solid transparent;
         }
+
+        /* Botões com leve transição */
+        .btn { transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease; }
+
+        /* Alertas flash: ícone alinhado e canto arredondado consistente */
+        .alert .bi { vertical-align: -0.125em; }
     </style>
 </head>
 <body>
@@ -101,7 +159,14 @@
                     <a class="nav-link"
                        th:classappend="${#strings.startsWith(uri,'/filtros')} ? 'active' : ''"
                        th:href="@{/filtros}">
-                        <i class="bi bi-funnel"></i> Filtros Gmail
+                        <i class="bi bi-funnel"></i> Filtros
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link"
+                       th:classappend="${#strings.startsWith(uri,'/gmail')} ? 'active' : ''"
+                       th:href="@{/gmail}">
+                        <i class="bi bi-envelope"></i> Gmail
                     </a>
                 </li>
                 <li class="nav-item">

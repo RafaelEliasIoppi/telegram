@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{::content})}">
+<body>
+
+<div th:fragment="content">
+
+    <h1 class="mb-2">
+        <i class="bi bi-envelope"></i> Configuração Gmail
+    </h1>
+
+    <p class="text-muted mb-4">
+        Configure as credenciais da conta Gmail que será monitorada via IMAP.
+        Os filtros de assunto são cadastrados separadamente em
+        <a href="/filtros">/filtros</a>.
+    </p>
+
+    <!-- Flash -->
+    <div th:if="${sucesso}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle"></i> <span th:text="${sucesso}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div th:if="${erro}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle"></i> <span th:text="${erro}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div class="row g-4">
+        <!-- Instruções -->
+        <div class="col-lg-4 order-lg-2">
+            <div class="card mb-4 border-info">
+                <div class="card-body">
+                    <h6 class="card-title text-info">
+                        <i class="bi bi-info-circle"></i> Pré-requisitos
+                    </h6>
+                    <ol class="mb-0 small">
+                        <li class="mb-2">
+                            Ative a <strong>verificação em 2 etapas</strong> em
+                            <a href="https://myaccount.google.com/security" target="_blank" rel="noopener">
+                                myaccount.google.com/security
+                            </a>.
+                        </li>
+                        <li class="mb-2">
+                            Gere uma <strong>senha de app</strong> em
+                            <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener">
+                                myaccount.google.com/apppasswords
+                            </a>
+                            (nome sugestivo: "Telegram Bot Hub").
+                        </li>
+                        <li class="mb-2">
+                            Copie a senha de <strong>16 caracteres</strong> e remova os espaços.
+                        </li>
+                        <li>
+                            Cadastre os <strong>assuntos a observar</strong> em
+                            <a href="/filtros">/filtros</a>.
+                        </li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="card border-secondary">
+                <div class="card-body">
+                    <h6 class="card-title">
+                        <i class="bi bi-shield-lock"></i> Segurança
+                    </h6>
+                    <ul class="mb-0 small">
+                        <li>A senha fica salva <strong>apenas no banco local</strong> (H2).</li>
+                        <li>Nunca é exibida de volta na UI após salva.</li>
+                        <li>Para revogar, remova a App Password em myaccount.google.com/apppasswords.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Formulário -->
+        <div class="col-lg-8 order-lg-1">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-gear"></i> Credenciais IMAP
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form th:action="@{/gmail}" method="post" class="row g-3">
+
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox"
+                                       id="enabled" name="enabled" value="true"
+                                       th:checked="${gmail.enabled}">
+                                <label class="form-check-label" for="enabled">
+                                    <strong>Monitoramento Gmail ativo</strong>
+                                </label>
+                            </div>
+                            <small class="form-text text-muted">
+                                Quando desligado, o monitor não tenta conectar na caixa postal.
+                            </small>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="user" class="form-label">
+                                E-mail <span class="text-danger">*</span>
+                            </label>
+                            <input type="email" id="user" name="user"
+                                   class="form-control" required
+                                   th:value="${gmail.user}"
+                                   placeholder="exemplo@gmail.com">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="appPassword" class="form-label">
+                                Senha de App
+                            </label>
+                            <div class="input-group">
+                                <input type="password" id="appPassword" name="appPassword"
+                                       class="form-control"
+                                       th:placeholder="${gmail.appPassword != null and !gmail.appPassword.isEmpty()} ? '•••••••• (já configurada)' : '16 caracteres sem espaços'"
+                                       maxlength="16">
+                                <button class="btn btn-outline-secondary" type="button"
+                                        onclick="const i=document.getElementById('appPassword'); i.type=i.type==='password'?'text':'password'">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                            <small class="form-text text-muted">
+                                Deixe em branco para manter a senha já configurada.
+                            </small>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="imapHost" class="form-label">Host IMAP</label>
+                            <input type="text" id="imapHost" name="imapHost"
+                                   class="form-control"
+                                   th:value="${gmail.imapHost}"
+                                   placeholder="imap.gmail.com">
+                        </div>
+
+                        <div class="col-md-2">
+                            <label for="imapPort" class="form-label">Porta</label>
+                            <input type="number" id="imapPort" name="imapPort"
+                                   class="form-control" min="1" max="65535"
+                                   th:value="${gmail.imapPort}"
+                                   placeholder="993">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="fixedRate" class="form-label">
+                                Intervalo de verificação (ms)
+                            </label>
+                            <input type="number" id="fixedRate" name="fixedRate"
+                                   class="form-control" min="10000" step="10000"
+                                   th:value="${gmail.fixedRate}"
+                                   placeholder="300000">
+                            <small class="form-text text-muted">
+                                Intervalo <strong>global</strong> de verificação de todas as fontes
+                                (Gmail, Defesa Civil, INMET, fontes customizadas).
+                                300000 ms = 5 min. Mínimo 10000 (10 s).
+                                Passa a valer no próximo ciclo, sem reiniciar.
+                            </small>
+                        </div>
+
+                        <div class="col-12 text-end">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-floppy"></i> Salvar configuração
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Status atual -->
+            <div class="card mt-4 shadow-sm">
+                <div class="card-body">
+                    <h6><i class="bi bi-activity"></i> Status do monitor</h6>
+                    <div th:if="${gmail.enabled and gmail.user != null and !gmail.user.isEmpty()}"
+                         class="text-success">
+                        <i class="bi bi-check-circle-fill"></i>
+                        Monitor ativo — e-mail <strong th:text="${gmail.user}">user@gmail.com</strong>
+                    </div>
+                    <div th:unless="${gmail.enabled and gmail.user != null and !gmail.user.isEmpty()}"
+                         class="text-warning">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        Monitor <strong>inativo</strong> — ative e configure o e-mail acima.
+                    </div>
+                    <small class="text-muted d-block mt-2">
+                        <i class="bi bi-arrow-right-circle"></i>
+                        Após salvar, os filtros de assunto em
+                        <a href="/filtros">/filtros</a>
+                        determinam quais e-mails geram alerta.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>
