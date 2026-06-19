@@ -168,7 +168,7 @@ public class CommandDispatcher {
     // ---------------------------------------------------------------------
 
     private void cmdStart(long chatId, String firstName) {
-        String nome = (firstName == null || firstName.isBlank()) ? "" : " " + firstName;
+        String nome = (firstName == null || firstName.isBlank()) ? "" : " " + escapeMarkdown(firstName);
         String texto = """
                 🤖 *Telegram Bot Hub*
                 Olá%s! Estou monitorando alertas para você.
@@ -217,7 +217,7 @@ public class CommandDispatcher {
             if (ultimos != null && !ultimos.isEmpty()) {
                 Alerta a = ultimos.get(0);
                 String dataFmt = a.getDataHora() != null ? a.getDataHora().format(FMT) : "—";
-                String fonte = a.getFonte() != null ? a.getFonte() : "—";
+                String fonte = a.getFonte() != null ? escapeMarkdown(a.getFonte()) : "—";
                 sb.append("📅 Último alerta: ").append(dataFmt).append(" (").append(fonte).append(")");
             } else {
                 sb.append("📅 Nenhum alerta registrado ainda.");
@@ -263,8 +263,8 @@ public class CommandDispatcher {
         sb.append("📋 *Últimos ").append(alertas.size()).append(" alertas*\n\n");
         for (Alerta a : alertas) {
             String emoji = emojiNivel(a.getNivel());
-            String titulo = a.getTitulo() != null ? a.getTitulo() : "(sem título)";
-            String fonte = a.getFonte() != null ? a.getFonte() : "—";
+            String titulo = a.getTitulo() != null ? escapeMarkdown(a.getTitulo()) : "(sem título)";
+            String fonte = a.getFonte() != null ? escapeMarkdown(a.getFonte()) : "—";
             String data = a.getDataHora() != null ? a.getDataHora().format(FMT) : "—";
             sb.append(emoji).append(" ").append(titulo).append("\n");
             sb.append("   _").append(fonte).append("_ • ").append(data).append("\n\n");
@@ -281,7 +281,7 @@ public class CommandDispatcher {
         List<List<Map<String, String>>> botoes = new ArrayList<>();
         for (String fonte : FONTES_DISPONIVEIS) {
             boolean ativa = ativas.isEmpty() || ativas.contains(fonte);
-            sb.append(ativa ? "🟢 " : "⚪ ").append(fonte).append(ativa ? " — ativa\n" : " — inativa\n");
+            sb.append(ativa ? "🟢 " : "⚪ ").append(escapeMarkdown(fonte)).append(ativa ? " — ativa\n" : " — inativa\n");
             String label = (ativa ? "🔕 Desativar " : "🔔 Ativar ") + fonte;
             botoes.add(List.of(botao(label, "fonte:toggle:" + fonte)));
         }
@@ -401,5 +401,25 @@ public class CommandDispatcher {
 
     private static Map<String, String> botao(String texto, String callbackData) {
         return Map.of("text", texto, "callback_data", callbackData);
+    }
+
+    /**
+     * Escapa caracteres especiais do Markdown (modo legado do Telegram) em
+     * textos dinâmicos (títulos, fontes, nomes). Sem isso, conteúdo com
+     * {@code _ * ` [ \} poderia gerar HTTP 400 ao enviar a mensagem.
+     */
+    private static String escapeMarkdown(String texto) {
+        if (texto == null) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder(texto.length());
+        for (int i = 0; i < texto.length(); i++) {
+            char c = texto.charAt(i);
+            if (c == '\\' || c == '_' || c == '*' || c == '`' || c == '[') {
+                sb.append('\\');
+            }
+            sb.append(c);
+        }
+        return sb.toString();
     }
 }

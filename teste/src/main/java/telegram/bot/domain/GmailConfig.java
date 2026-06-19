@@ -8,6 +8,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 @Entity
 @Table(name = "gmail_config")
@@ -26,6 +27,8 @@ public class GmailConfig {
     @Column(name = "gmail_user")
     private String user;
 
+    // Evita vazar a senha de app no toString() gerado pelo @Data.
+    @ToString.Exclude
     private String appPassword;
 
     private String imapHost;

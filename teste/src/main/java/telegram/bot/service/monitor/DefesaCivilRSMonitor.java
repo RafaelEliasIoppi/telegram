@@ -78,11 +78,17 @@ public class DefesaCivilRSMonitor implements FonteMonitor {
     @Override
     public List<Alerta> verificar() {
         List<String> textos = coletarViaRss();
+
+        // Headlines, keywords e imagem usam a MESMA página principal. Para
+        // evitar vários GETs por ciclo, baixa-se o Document uma única vez e
+        // reutiliza-se entre as três etapas (null se a página estiver fora).
+        Document pagina = (textos.isEmpty() || textos.size() < 2) ? baixarPagina() : null;
+
         if (textos.isEmpty()) {
-            textos = coletarHeadlines();
+            textos = coletarHeadlines(pagina);
         }
         if (textos.size() < 2) {
-            List<String> porKeyword = coletarPorKeywords();
+            List<String> porKeyword = coletarPorKeywords(pagina);
             for (String t : porKeyword) {
                 if (!textos.contains(t)) {
                     textos.add(t);
@@ -91,7 +97,9 @@ public class DefesaCivilRSMonitor implements FonteMonitor {
         }
 
         List<Alerta> alertas = new ArrayList<>();
-        String imagemPagina = extrairImagemPagina();
+        String imagemPagina = pagina != null
+                ? ImagemExtractor.extrairDeHtml(pagina, url)
+                : extrairImagemPagina();
         for (String texto : textos) {
             Alerta a = montarAlerta(texto);
             if (imagemPagina != null) a.setImagemUrl(imagemPagina);
@@ -100,16 +108,22 @@ public class DefesaCivilRSMonitor implements FonteMonitor {
         return alertas;
     }
 
-    private String extrairImagemPagina() {
+    /** Baixa a página principal uma única vez (com timeout); null se falhar. */
+    private Document baixarPagina() {
         try {
-            Document doc = Jsoup.connect(url)
+            return Jsoup.connect(url)
                     .userAgent(USER_AGENT)
                     .timeout(TIMEOUT_MS)
                     .get();
-            return ImagemExtractor.extrairDeHtml(doc, url);
         } catch (Exception e) {
+            log.debug("Defesa Civil: falha ao baixar página {}: {}", url, e.getMessage());
             return null;
         }
+    }
+
+    private String extrairImagemPagina() {
+        Document doc = baixarPagina();
+        return doc == null ? null : ImagemExtractor.extrairDeHtml(doc, url);
     }
 
     /** Estratégia 1: RSS/Atom. */
@@ -155,11 +169,11 @@ public class DefesaCivilRSMonitor implements FonteMonitor {
         return out;
     }
 
-    /** Estratégia 2: headlines. */
-    private List<String> coletarHeadlines() {
+    /** Estratégia 2: headlines (reusa o Document já baixado, se disponível). */
+    private List<String> coletarHeadlines(Document paginaReuso) {
         List<String> out = new ArrayList<>();
         try {
-            Document doc = Jsoup.connect(url)
+            Document doc = paginaReuso != null ? paginaReuso : Jsoup.connect(url)
                     .userAgent(USER_AGENT)
                     .timeout(TIMEOUT_MS)
                     .get();
@@ -191,11 +205,11 @@ public class DefesaCivilRSMonitor implements FonteMonitor {
         return out;
     }
 
-    /** Estratégia 3: parágrafos contendo palavras-chave. */
-    private List<String> coletarPorKeywords() {
+    /** Estratégia 3: parágrafos contendo palavras-chave (reusa o Document). */
+    private List<String> coletarPorKeywords(Document paginaReuso) {
         List<String> out = new ArrayList<>();
         try {
-            Document doc = Jsoup.connect(url)
+            Document doc = paginaReuso != null ? paginaReuso : Jsoup.connect(url)
                     .userAgent(USER_AGENT)
                     .timeout(TIMEOUT_MS)
                     .get();

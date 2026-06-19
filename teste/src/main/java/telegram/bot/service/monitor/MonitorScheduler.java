@@ -97,14 +97,24 @@ public class MonitorScheduler {
                 ? ""
                 : alerta.getDataHora().format(FMT);
 
+        // Conteúdo: fontes web (Defesa Civil, INMET, fontes customizadas)
+        // produzem TEXTO BRUTO que pode conter caracteres reservados do
+        // Markdown (_ * ` [) e quebrar o parsing (HTTP 400). Já o Gmail produz
+        // Markdown intencional e NÃO deve ser escapado. O escape ocorre ANTES
+        // do truncamento, garantindo que o corte não deixe escapes incompletos.
+        String conteudo = nullSafe(alerta.getConteudo());
+        if (deveEscaparConteudo(alerta.getFonte())) {
+            conteudo = escapeMarkdown(conteudo);
+        }
+
         // Layout do aviso (Markdown V1 do Telegram):
         //   {emoji} {NÍVEL} · {fonte}      ← cabeçalho de severidade
         //   *{título}*                     ← título em negrito
         //   {conteúdo}
         //   ━━━━━━━━━━━━━━━                ← divisor
         //   {bolinha} {nível}  ·  🕒 {data}
-        // Título e fonte são escapados (V1); o conteúdo NÃO é escapado aqui
-        // porque alguns monitores (ex.: Gmail) já produzem Markdown intencional.
+        // Título e fonte são escapados (V1); o conteúdo é escapado conforme a
+        // fonte (web sim; Gmail não, pois já produz Markdown intencional).
         String mensagem = String.format("""
                 %s *%s · %s*
 
@@ -119,7 +129,7 @@ public class MonitorScheduler {
                 nivel.rotulo(),
                 escapeMarkdown(descricaoFonte(alerta.getFonte())),
                 escapeMarkdown(nullSafe(alerta.getTitulo())),
-                nullSafe(alerta.getConteudo()),
+                conteudo,
                 nivel.bolinha(),
                 nivel.rotulo().toLowerCase(),
                 dataFormatada
@@ -201,6 +211,16 @@ public class MonitorScheduler {
 
     private String nullSafe(String s) {
         return s == null ? "" : s;
+    }
+
+    /**
+     * Decide se o conteúdo do alerta deve ser escapado para Markdown V1.
+     * O Gmail ("GMAIL_URGENCIA_RENAL") já emite Markdown intencional e por
+     * isso é a única fonte isenta; as demais (fontes web/customizadas)
+     * trazem texto bruto e precisam ser escapadas para não quebrar o parsing.
+     */
+    private boolean deveEscaparConteudo(String fonte) {
+        return !"GMAIL_URGENCIA_RENAL".equals(fonte);
     }
 
     /**

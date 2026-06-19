@@ -111,7 +111,8 @@
             </h5>
         </div>
         <div class="card-body">
-            <form th:action="@{/chats}" th:object="${chatForm}" method="post" class="row g-3">
+            <form th:action="@{/chats}" th:object="${chatForm}" method="post" class="row g-3"
+                  onsubmit="serializarFontes()">
 
                 <div class="col-md-4">
                     <label for="chatId" class="form-label">Chat ID *</label>

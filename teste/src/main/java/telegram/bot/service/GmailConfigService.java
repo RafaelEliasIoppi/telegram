@@ -6,11 +6,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import org.springframework.transaction.annotation.Transactional;
+
 import jakarta.annotation.PostConstruct;
 import telegram.bot.domain.GmailConfig;
 import telegram.bot.repository.GmailConfigRepository;
 
 @Service
+@Transactional
 public class GmailConfigService {
 
     private static final Logger log = LoggerFactory.getLogger(GmailConfigService.class);

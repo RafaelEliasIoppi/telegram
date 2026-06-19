@@ -20,9 +20,13 @@
                 <div class="col-md-5">
                     <label for="filtroFonte" class="form-label">Fonte</label>
                     <select id="filtroFonte" class="form-select" onchange="aplicarFiltros()">
+                        <!-- TODO: o ideal é popular estas opções dinamicamente a partir
+                             das fontes disponíveis (nativas + customizadas), em vez de
+                             manter a lista fixa aqui no template. -->
                         <option value="">Todas</option>
                         <option value="DEFESA_CIVIL_RS">DEFESA_CIVIL_RS</option>
                         <option value="INMET">INMET</option>
+                        <option value="GMAIL_URGENCIA_RENAL">GMAIL_URGENCIA_RENAL</option>
                     </select>
                 </div>
                 <div class="col-md-5">

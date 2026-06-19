@@ -29,8 +29,11 @@
             </h5>
         </div>
         <div class="card-body">
-            <pre class="bg-light p-3 rounded mb-0" style="white-space:pre-wrap; word-break:break-all;"
-                 th:text="${botInfo}">Informações do bot.</pre>
+            <p class="text-muted small mb-2">
+                Resposta crua da API do Telegram (<code>getMe</code>), exibida sem
+                tratamento.
+            </p>
+            <pre class="bg-light p-3 rounded mb-0" style="white-space:pre-wrap; word-break:break-all;"><code th:text="${botInfo}">Informações do bot.</code></pre>
         </div>
     </div>
 

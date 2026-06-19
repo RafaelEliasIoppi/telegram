@@ -12,7 +12,7 @@
     <p class="text-muted mb-4">
         Configure as credenciais da conta Gmail que será monitorada via IMAP.
         Os filtros de assunto são cadastrados separadamente em
-        <a href="/filtros">/filtros</a>.
+        <a th:href="@{/filtros}">/filtros</a>.
     </p>
 
     <!-- Flash -->
@@ -52,7 +52,7 @@
                         </li>
                         <li>
                             Cadastre os <strong>assuntos a observar</strong> em
-                            <a href="/filtros">/filtros</a>.
+                            <a th:href="@{/filtros}">/filtros</a>.
                         </li>
                     </ol>
                 </div>
@@ -117,6 +117,7 @@
                                        th:placeholder="${gmail.appPassword != null and !gmail.appPassword.isEmpty()} ? '•••••••• (já configurada)' : '16 caracteres sem espaços'"
                                        maxlength="16">
                                 <button class="btn btn-outline-secondary" type="button"
+                                        aria-label="Mostrar ou ocultar senha"
                                         onclick="const i=document.getElementById('appPassword'); i.type=i.type==='password'?'text':'password'">
                                     <i class="bi bi-eye"></i>
                                 </button>
@@ -184,7 +185,7 @@
                     <small class="text-muted d-block mt-2">
                         <i class="bi bi-arrow-right-circle"></i>
                         Após salvar, os filtros de assunto em
-                        <a href="/filtros">/filtros</a>
+                        <a th:href="@{/filtros}">/filtros</a>
                         determinam quais e-mails geram alerta.
                     </small>
                 </div>

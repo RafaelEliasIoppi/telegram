@@ -4,9 +4,11 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -26,6 +28,13 @@ public class BotWebhookController {
 
     private final CommandDispatcher dispatcher;
 
+    /**
+     * Token secreto esperado no header X-Telegram-Bot-Api-Secret-Token.
+     * Se vazio, a validação fica desativada (comportamento compatível com o atual).
+     */
+    @Value("${telegram.webhook.secret:}")
+    private String webhookSecret;
+
     public BotWebhookController(CommandDispatcher dispatcher) {
         this.dispatcher = dispatcher;
     }
@@ -38,7 +47,16 @@ public class BotWebhookController {
      * @return resposta {@code "ok"}
      */
     @PostMapping
-    public ResponseEntity<String> receberUpdate(@RequestBody Map<String, Object> update) {
+    public ResponseEntity<String> receberUpdate(
+            @RequestBody Map<String, Object> update,
+            @RequestHeader(value = "X-Telegram-Bot-Api-Secret-Token", required = false) String secretToken) {
+        // Se um secret estiver configurado, exigimos que o header bata exatamente.
+        // Com secret vazio, mantemos o comportamento atual (sem validação).
+        if (webhookSecret != null && !webhookSecret.isBlank()
+                && !webhookSecret.equals(secretToken)) {
+            logger.warn("Update do webhook rejeitado: secret token ausente ou inválido.");
+            return ResponseEntity.status(401).body("unauthorized");
+        }
         try {
             if (update == null) {
                 return ResponseEntity.ok("ok");

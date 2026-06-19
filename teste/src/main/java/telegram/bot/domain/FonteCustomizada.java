@@ -47,7 +47,7 @@ public class FonteCustomizada {
     private String codigo;
 
     /** URL (HTML) ou RSS (XML). */
-    @Column(nullable = false, length = 500)
+    @Column(nullable = false, length = 20)
     private String tipo;
 
     @Column(nullable = false, length = 1000)

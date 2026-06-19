@@ -43,6 +43,10 @@ public class TelegramBotService {
     @Value("${telegram.webhook.enabled:false}")
     private boolean webhookEnabled;
 
+    /** Token secreto opcional para validar updates recebidos no webhook. */
+    @Value("${telegram.webhook.secret:}")
+    private String webhookSecret;
+
     private final RestTemplate restTemplate;
 
     public TelegramBotService(RestTemplate restTemplate) {
@@ -201,6 +205,11 @@ public class TelegramBotService {
         Map<String, Object> body = new HashMap<>();
         body.put("url", webhookUrl);
         body.put("allowed_updates", List.of("message", "callback_query"));
+        // Se configurado, o Telegram passará a enviar este token no header
+        // X-Telegram-Bot-Api-Secret-Token a cada update, permitindo validar a origem.
+        if (webhookSecret != null && !webhookSecret.isBlank()) {
+            body.put("secret_token", webhookSecret);
+        }
         return post("setWebhook", body);
     }
 
@@ -233,6 +242,25 @@ public class TelegramBotService {
                 logger.debug("Telegram {} -> {}", method, resposta);
             }
             return resposta;
+        } catch (org.springframework.web.client.HttpStatusCodeException e) {
+            // Erros HTTP da própria API do Telegram: logamos status + corpo para
+            // facilitar o diagnóstico (Markdown inválido, bloqueio, rate limit, etc.).
+            int status = e.getStatusCode().value();
+            String corpo = e.getResponseBodyAsString();
+            switch (status) {
+                case 400 ->
+                    logger.warn("Telegram {} retornou 400 (Bad Request — ex.: Markdown inválido/entidade malformada). Corpo: {}",
+                            method, corpo);
+                case 403 ->
+                    logger.warn("Telegram {} retornou 403 (Forbidden — bot bloqueado/sem permissão no chat). Corpo: {}",
+                            method, corpo);
+                case 429 ->
+                    logger.warn("Telegram {} retornou 429 (Too Many Requests — rate limit). Corpo: {}",
+                            method, corpo);
+                default ->
+                    logger.warn("Telegram {} retornou HTTP {}. Corpo: {}", method, status, corpo);
+            }
+            return null;
         } catch (Exception e) {
             logger.error("Erro ao chamar Telegram method='{}': {}", method, e.getMessage());
             return null;

@@ -23,18 +23,23 @@ public final class ImagemExtractor {
     public static String extrairDeHtml(Document doc, String baseUrl) {
         if (doc == null) return null;
 
+        // META TAGS confiáveis (og:image, twitter:image): aceitam qualquer URL
+        // http(s) — muitos sites servem a imagem por endpoint dinâmico, sem
+        // extensão no caminho. Exigir extensão aqui descartaria imagens válidas.
         Element og = doc.selectFirst("meta[property=og:image]");
         if (og != null) {
             String url = og.attr("content");
-            if (isImagemValida(url)) return absoluta(url, baseUrl);
+            if (isMetaImagemConfiavel(url)) return absoluta(url, baseUrl);
         }
 
         Element tw = doc.selectFirst("meta[name=twitter:image]");
         if (tw != null) {
             String url = tw.attr("content");
-            if (isImagemValida(url)) return absoluta(url, baseUrl);
+            if (isMetaImagemConfiavel(url)) return absoluta(url, baseUrl);
         }
 
+        // <img src> genérico: mantém a exigência de extensão de imagem para
+        // evitar logos, sprites e pixels de rastreamento.
         for (Element img : doc.select("img[src]")) {
             String src = img.attr("src");
             if (isImagemValida(src)) {
@@ -86,17 +91,34 @@ public final class ImagemExtractor {
         return null;
     }
 
+    /**
+     * Validação para META TAGS confiáveis (og:image / twitter:image): basta
+     * ser uma URL http(s) que não seja data: nem SVG. Não exige extensão,
+     * pois é comum servir a imagem por endpoint dinâmico.
+     */
+    private static boolean isMetaImagemConfiavel(String url) {
+        if (url == null || url.isBlank()) return false;
+        String lower = url.toLowerCase();
+        if (lower.contains("data:image")) return false;
+        if (!lower.startsWith("http")) return false;
+        // SVG não é bem suportado como foto no Telegram; descarta também aqui.
+        String semQuery = lower.split("[?#]", 2)[0];
+        return !semQuery.endsWith(".svg");
+    }
+
     private static boolean isImagemValida(String url) {
         if (url == null || url.isBlank()) return false;
         String lower = url.toLowerCase();
         if (lower.contains("data:image")) return false;
         if (lower.endsWith(".svg")) return false;
         if (!lower.startsWith("http")) return false;
-        // Exige extensão de imagem real (com ou sem query string). As tags
-        // confiáveis og:image / twitter:image são tratadas antes desta checagem;
-        // aqui evitamos capturar logos, sprites e pixels de rastreamento que
-        // só contêm "photo"/"/image" no caminho.
-        return lower.matches(".*\\.(jpe?g|png|webp)(\\?.*)?$");
+        // Exige extensão de imagem real. Tolerante a query string (?...) e a
+        // fragmentos (#...): a extensão é checada apenas no caminho, ignorando
+        // o que vem depois. As tags confiáveis og:image / twitter:image são
+        // tratadas por isMetaImagemConfiavel; aqui evitamos capturar logos,
+        // sprites e pixels de rastreamento que só contêm "photo"/"/image" no path.
+        String caminho = lower.split("[?#]", 2)[0];
+        return caminho.matches(".*\\.(jpe?g|png|webp)$");
     }
 
     private static String absoluta(String url, String base) {

@@ -69,6 +69,10 @@ public class UrgenciaRenalGmailMonitor implements FonteMonitor {
 
     private static final long ONE_DAY_MS = 24L * 60L * 60L * 1000L;
     private static final int MAX_BODY_CHARS = 1500;
+    /** Teto de mensagens varridas no fallback (busca IMAP indisponível). */
+    private static final int MAX_FALLBACK_MENSAGENS = 200;
+    /** Teto do set de dedup in-memory; ao exceder, o set é limpo. */
+    private static final int MAX_SEEN_IDS = 5000;
     private static final Path STATE_FILE = Paths.get("ultimo_assunto.txt");
 
     private static final java.util.regex.Pattern REMETENTE_RE =
@@ -135,6 +139,11 @@ public class UrgenciaRenalGmailMonitor implements FonteMonitor {
         props.put("mail.imaps.port", String.valueOf(imapPort));
         props.put("mail.imaps.ssl.enable", "true");
         props.put("mail.imaps.ssl.trust", imapHost);
+        // Timeouts IMAP: sem eles a conexão pode travar indefinidamente e
+        // congelar o scheduler. connect/leitura/escrita em milissegundos.
+        props.put("mail.imaps.connectiontimeout", "15000");
+        props.put("mail.imaps.timeout", "20000");
+        props.put("mail.imaps.writetimeout", "20000");
 
         Session session = Session.getInstance(props);
 
@@ -156,8 +165,12 @@ public class UrgenciaRenalGmailMonitor implements FonteMonitor {
             try {
                 mensagens = inbox.search(criteria);
             } catch (Exception e) {
-                log.warn("Gmail monitor: busca IMAP falhou ({}); usando varredura completa", e.getMessage());
-                mensagens = inbox.getMessages();
+                log.warn("Gmail monitor: busca IMAP falhou ({}); usando varredura limitada", e.getMessage());
+                // Varredura completa pode ser muito custosa em caixas grandes;
+                // limita às últimas ~200 mensagens calculando o range pelo total.
+                int total = inbox.getMessageCount();
+                int start = Math.max(1, total - MAX_FALLBACK_MENSAGENS + 1);
+                mensagens = total > 0 ? inbox.getMessages(start, total) : new Message[0];
             }
 
             List<String> filtrosNormalizados = carregarFiltrosAtivos();
@@ -183,9 +196,17 @@ public class UrgenciaRenalGmailMonitor implements FonteMonitor {
                     }
 
                     String messageId = extrairMessageId(msg);
-                    if (messageId != null && !seenMessageIds.add(messageId)) {
-                        // já visto nesta JVM
-                        continue;
+                    if (messageId != null) {
+                        // Evita crescimento ilimitado do set em JVMs de vida longa:
+                        // ao exceder o teto, descarta o histórico (a dedup secundária
+                        // por hash do AlertaService continua protegendo contra repetição).
+                        if (seenMessageIds.size() > MAX_SEEN_IDS) {
+                            seenMessageIds.clear();
+                        }
+                        if (!seenMessageIds.add(messageId)) {
+                            // já visto nesta JVM
+                            continue;
+                        }
                     }
 
                     String corpoBruto = extrairCorpo(msg);

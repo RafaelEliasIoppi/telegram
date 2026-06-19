@@ -7,6 +7,9 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,8 +36,17 @@ public class AlertaService {
     public Optional<Alerta> registrarSeNovo(Alerta alerta) {
         String hash = calcularHash(alerta.getConteudo());
         alerta.setHashConteudo(hash);
+        // Verificação prévia: descarta duplicados já conhecidos sem ir ao banco.
         if (alertaRepo.findByHashConteudo(hash).isPresent()) return Optional.empty();
-        return Optional.of(alertaRepo.save(alerta));
+        try {
+            // saveAndFlush força a gravação imediata para que a violação do
+            // índice único em hashConteudo (sob concorrência) seja detectada aqui.
+            return Optional.of(alertaRepo.saveAndFlush(alerta));
+        } catch (DataIntegrityViolationException e) {
+            // Outro processo gravou o mesmo conteúdo entre o check e o save:
+            // trata como duplicado.
+            return Optional.empty();
+        }
     }
 
     /**
@@ -60,10 +72,11 @@ public class AlertaService {
     }
 
     /**
-     * Últimos N alertas (atualmente fixo em 20 pelo repository).
+     * Últimos N alertas, ordenados do mais recente para o mais antigo.
      */
     public List<Alerta> ultimosAlertas(int n) {
-        return alertaRepo.findTop20ByOrderByDataHoraDesc();
+        if (n < 1) n = 1;
+        return alertaRepo.findByOrderByDataHoraDesc(PageRequest.of(0, n));
     }
 
     public List<ChatConfig> listarChats() {
@@ -75,19 +88,27 @@ public class AlertaService {
     }
 
     public void removerChat(Long chatId) {
-        chatConfigRepo.deleteById(chatId);
+        // Evita lançar exceção quando o chat não existe.
+        try {
+            chatConfigRepo.deleteById(chatId);
+        } catch (EmptyResultDataAccessException ignored) {
+            // chat já inexistente: nada a fazer
+        }
     }
 
     /**
      * Hash SHA-256 do conteúdo para deduplicação.
      */
     private String calcularHash(String conteudo) {
+        // Trata conteúdo nulo como string vazia para evitar NPE.
+        String texto = conteudo != null ? conteudo : "";
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] hash = md.digest(conteudo.getBytes(StandardCharsets.UTF_8));
+            byte[] hash = md.digest(texto.getBytes(StandardCharsets.UTF_8));
             return HexFormat.of().formatHex(hash);
         } catch (Exception e) {
-            return conteudo.substring(0, Math.min(255, conteudo.length()));
+            // Fallback: usa o próprio texto (já garantido não-nulo) limitado a 255 chars.
+            return texto.substring(0, Math.min(255, texto.length()));
         }
     }
 }

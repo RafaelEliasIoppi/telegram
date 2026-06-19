@@ -1,5 +1,7 @@
 package telegram.bot.controller;
 
+import java.net.InetAddress;
+import java.net.URI;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -9,6 +11,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
@@ -49,6 +53,12 @@ import telegram.bot.service.monitor.MonitorScheduler;
  */
 @Controller
 public class WebController {
+
+    private static final Logger log = LoggerFactory.getLogger(WebController.class);
+
+    /** Limite genérico de tamanho para campos de texto vindos de formulários. */
+    private static final int MAX_TEXTO = 2000;
+    private static final int MAX_CAMPO = 500;
 
     private final AlertaService alertaService;
     private final TelegramBotService telegramService;
@@ -175,8 +185,9 @@ public class WebController {
                         fc.isAtivo(), intervaloGlobal,
                         contagemPorFonte.getOrDefault(fc.getCodigo(), 0L)));
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
             // se falhar, segue só com as nativas
+            log.warn("Falha ao carregar fontes customizadas para o dashboard: {}", e.getMessage());
         }
 
         model.addAttribute("pageTitle", "Painel de Controle");
@@ -261,8 +272,9 @@ public class WebController {
             for (FonteCustomizada f : fonteRepo.findAll()) {
                 out.add(Map.of("codigo", f.getCodigo(), "nome", f.getNome()));
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
             // se o repo falhar, devolve só as nativas
+            log.warn("Falha ao listar fontes customizadas disponíveis: {}", e.getMessage());
         }
         return out;
     }
@@ -272,6 +284,13 @@ public class WebController {
         try {
             if (chatForm.getChatId() == null) {
                 ra.addFlashAttribute("erro", "Chat ID é obrigatório.");
+                return "redirect:/chats";
+            }
+            // Limites simples de tamanho para os campos textuais.
+            if ((chatForm.getNome() != null && chatForm.getNome().length() > MAX_CAMPO)
+                    || (chatForm.getNivelMinimo() != null && chatForm.getNivelMinimo().length() > MAX_CAMPO)
+                    || (chatForm.getFontesAtivas() != null && chatForm.getFontesAtivas().length() > MAX_TEXTO)) {
+                ra.addFlashAttribute("erro", "Algum campo excede o tamanho máximo permitido.");
                 return "redirect:/chats";
             }
             // Defaults seguros
@@ -364,6 +383,10 @@ public class WebController {
             ra.addFlashAttribute("erro", "Nome e Padrão são obrigatórios.");
             return "redirect:/filtros";
         }
+        if (nome.length() > MAX_CAMPO || padrao.length() > MAX_CAMPO) {
+            ra.addFlashAttribute("erro", "Nome e Padrão devem ter no máximo " + MAX_CAMPO + " caracteres.");
+            return "redirect:/filtros";
+        }
         FiltroAssunto f = FiltroAssunto.builder()
                 .nome(nome.trim())
                 .padrao(padrao.trim())
@@ -413,6 +436,13 @@ public class WebController {
     public String salvarGmail(GmailConfig form,
                               @org.springframework.web.bind.annotation.RequestParam(required = false) Boolean enabled,
                               RedirectAttributes ra) {
+        // Limites simples e proteção contra mass-assignment: nunca confiamos no id
+        // vindo do form — usamos sempre a config existente (ou id fixo 1L).
+        if ((form.getUser() != null && form.getUser().length() > MAX_CAMPO)
+                || (form.getImapHost() != null && form.getImapHost().length() > MAX_CAMPO)) {
+            ra.addFlashAttribute("erro", "Usuário ou host IMAP excede o tamanho máximo permitido.");
+            return "redirect:/gmail";
+        }
         GmailConfig cfg = gmailConfigService.getConfig();
         if (cfg == null) cfg = GmailConfig.builder().id(1L).build();
         cfg.setEnabled(enabled != null && enabled);
@@ -456,8 +486,20 @@ public class WebController {
             ra.addFlashAttribute("erro", "Nome e URL são obrigatórios.");
             return "redirect:/fontes";
         }
+        // Limites simples de tamanho para evitar payloads abusivos.
+        if (nome.length() > MAX_CAMPO || url.length() > MAX_TEXTO
+                || (seletor != null && seletor.length() > MAX_CAMPO)
+                || (palavrasChave != null && palavrasChave.length() > MAX_TEXTO)) {
+            ra.addFlashAttribute("erro", "Algum campo excede o tamanho máximo permitido.");
+            return "redirect:/fontes";
+        }
         if (!url.matches("(?i)https?://.+")) {
             ra.addFlashAttribute("erro", "URL precisa começar com http:// ou https://.");
+            return "redirect:/fontes";
+        }
+        // Anti-SSRF: recusa URLs que apontem para hosts internos/privados.
+        if (!urlSegura(url)) {
+            ra.addFlashAttribute("erro", "URL não permitida (host interno/privado ou não resolvível).");
             return "redirect:/fontes";
         }
         String codigo = nome.trim().toUpperCase()
@@ -514,6 +556,68 @@ public class WebController {
     }
 
     // ------------------------------------------------------------------
+    // Helpers de segurança / validação
+    // ------------------------------------------------------------------
+
+    /**
+     * Verifica se uma URL é segura para a aplicação acessar (anti-SSRF).
+     *
+     * <p>Rejeita esquemas diferentes de http/https e hosts que resolvam para
+     * endereços loopback, privados, link-local ou de metadados de cloud
+     * (127.0.0.0/8, 10/8, 172.16/12, 192.168/16, 169.254/16, localhost, ::1,
+     * 169.254.169.254). Falha de resolução é tratada como insegura.</p>
+     */
+    private boolean urlSegura(String url) {
+        if (url == null || url.isBlank()) return false;
+        try {
+            URI uri = URI.create(url.trim());
+            String scheme = uri.getScheme();
+            if (scheme == null
+                    || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))) {
+                return false;
+            }
+            String host = uri.getHost();
+            if (host == null || host.isBlank()) return false;
+
+            String hostLower = host.toLowerCase();
+            if (hostLower.equals("localhost") || hostLower.equals("ip6-localhost")) {
+                return false;
+            }
+
+            // Resolve todos os endereços do host: se QUALQUER um for inseguro, rejeita.
+            InetAddress[] enderecos = InetAddress.getAllByName(host);
+            if (enderecos.length == 0) return false;
+            for (InetAddress addr : enderecos) {
+                if (enderecoInseguro(addr)) return false;
+            }
+            return true;
+        } catch (Exception e) {
+            // URL malformada ou host que não resolve = inseguro.
+            log.debug("urlSegura: rejeitando '{}' ({})", url, e.getMessage());
+            return false;
+        }
+    }
+
+    /** Classifica um endereço IP como interno/perigoso para SSRF. */
+    private boolean enderecoInseguro(InetAddress addr) {
+        if (addr.isLoopbackAddress()       // 127.0.0.0/8, ::1
+                || addr.isAnyLocalAddress() // 0.0.0.0
+                || addr.isLinkLocalAddress()// 169.254/16, fe80::/10
+                || addr.isSiteLocalAddress()// 10/8, 172.16/12, 192.168/16
+                || addr.isMulticastAddress()) {
+            return true;
+        }
+        // Metadados de cloud (AWS/GCP/Azure) — coberto por link-local, mas reforçamos.
+        return "169.254.169.254".equals(addr.getHostAddress());
+    }
+
+    /** Trunca um texto a {@code max} caracteres, preservando null. */
+    private String limitar(String valor, int max) {
+        if (valor == null) return null;
+        return valor.length() > max ? valor.substring(0, max) : valor;
+    }
+
+    // ------------------------------------------------------------------
     // Teste rápido — envio direto pro Telegram
     // ------------------------------------------------------------------
 
@@ -553,6 +657,10 @@ public class WebController {
             ra.addFlashAttribute("erro", "Escreva um texto, anexe um arquivo ou cole uma URL.");
             return "redirect:/teste";
         }
+        // Limite simples de tamanho do texto (trunca para não exceder limites do Telegram).
+        if (texto != null && texto.length() > MAX_TEXTO) {
+            texto = limitar(texto, MAX_TEXTO);
+        }
 
         try {
             if (temArquivo) {
@@ -569,6 +677,12 @@ public class WebController {
                 ra.addFlashAttribute("sucesso",
                         "Enviado para o chat " + destino + " com anexo '" + nome + "'.");
             } else if (temUrl) {
+                // Anti-SSRF: a URL será buscada pelo Telegram (foto) ou divulgada;
+                // recusamos hosts internos/privados de qualquer forma.
+                if (!urlSegura(anexoUrl)) {
+                    ra.addFlashAttribute("erro", "URL não permitida (host interno/privado ou não resolvível).");
+                    return "redirect:/teste";
+                }
                 String lower = anexoUrl.toLowerCase();
                 boolean isFoto = lower.matches(".*\\.(jpe?g|png|webp)(\\?.*)?$");
                 if (isFoto) {

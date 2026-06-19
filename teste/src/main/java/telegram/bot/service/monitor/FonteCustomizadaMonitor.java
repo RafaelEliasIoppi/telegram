@@ -36,6 +36,8 @@ public class FonteCustomizadaMonitor implements FonteMonitor {
 
     private static final int TIMEOUT_MS = 12_000;
     private static final int MAX_ITENS_POR_FONTE = 10;
+    /** Teto do set de dedup in-memory; ao exceder, o set é limpo. */
+    private static final int MAX_SEEN = 5000;
 
     @Autowired(required = false)
     private FonteCustomizadaRepository repo;
@@ -141,6 +143,12 @@ public class FonteCustomizadaMonitor implements FonteMonitor {
             }
 
             String hashSeen = f.getCodigo() + "::" + titulo.trim();
+            // Evita crescimento ilimitado do set em JVMs de vida longa: ao
+            // exceder o teto, descarta o histórico (a dedup por hash do
+            // AlertaService continua protegendo contra repetição).
+            if (seen.size() > MAX_SEEN) {
+                seen.clear();
+            }
             if (!seen.add(hashSeen)) continue;
 
             String imagem = isRss ? ImagemExtractor.extrairDeItemRss(el) : imagemPagina;

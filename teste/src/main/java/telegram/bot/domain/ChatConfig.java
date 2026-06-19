@@ -47,9 +47,10 @@ public class ChatConfig {
     public boolean aceitaFonte(String fonte) {
         if (fontesAtivas == null || fontesAtivas.isBlank()) return true;
         // Tolera espaços ao redor das vírgulas (ex.: "DEFESA_CIVIL_RS, INMET").
+        // Comparação case-insensitive: as fontes são salvas em UPPERCASE pelo dispatcher.
         return Arrays.stream(fontesAtivas.split(","))
                 .map(String::trim)
-                .anyMatch(f -> f.equals(fonte));
+                .anyMatch(f -> f.equalsIgnoreCase(fonte));
     }
 
     public boolean aceitaNivel(String nivel) {
